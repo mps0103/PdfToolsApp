@@ -23,16 +23,16 @@ import {
   pageFrames,
 } from '../lib/annotations';
 import { PickedFile } from '../lib/files';
-import { shareFile } from '../lib/fs';
+import ResultCard from '../components/ResultCard';
 import { PdfRender, RENDER_ERRORS } from '../native/PdfRender';
 import { colors, radius, space, type } from '../theme';
 
 type Mode = 'ink' | 'highlight' | 'text' | 'whiteout';
-type Props = { route: any };
+type Props = { route: any; navigation: any };
 
 const CANVAS_WIDTH = Math.min(Dimensions.get('window').width - space.lg * 2, 520);
 
-export default function AnnotateScreen({ route }: Props) {
+export default function AnnotateScreen({ route, navigation }: Props) {
   const file: PickedFile = route.params.file;
   const signing: boolean = route.params.signing ?? false;
 
@@ -47,6 +47,7 @@ export default function AnnotateScreen({ route }: Props) {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ path: string; note?: string } | null>(null);
 
   const start = useRef<Point | null>(null);
   const liveRef = useRef<Point[] | null>(null);
@@ -142,7 +143,7 @@ export default function AnnotateScreen({ route }: Props) {
     setBusy(true);
     try {
       const res = await commitAnnotations(file, annotations, frames);
-      await shareFile(res.path);
+      setResult(res);
     } catch (e: any) {
       Alert.alert('Could not save', e?.message ?? 'Something went wrong.');
     } finally {
@@ -300,6 +301,15 @@ export default function AnnotateScreen({ route }: Props) {
           <Text style={styles.ctaText}>{busy ? 'Saving…' : 'Save'}</Text>
         </Pressable>
       </View>
+
+      {result && (
+        <ResultCard
+          path={result.path}
+          note={result.note}
+          navigation={navigation}
+          onPathChange={next => setResult({ ...result, path: next })}
+        />
+      )}
 
       <Modal visible={pendingText !== null} transparent animationType="fade">
         <View style={styles.modalWrap}>

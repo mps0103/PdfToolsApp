@@ -75,12 +75,11 @@ export default function ReaderScreen({ route, navigation }: Props) {
           onPageChanged={p => setPage(p)}
           onError={onError}
           renderActivityIndicator={() => <ActivityIndicator color={colors.accent} />}
-          style={[
-            styles.fill,
-            { backgroundColor: night ? '#000000' : colors.bg },
-          ]}
+          style={[styles.fill, { backgroundColor: colors.bg }]}
         />
       )}
+
+      {night && !error && <View pointerEvents="none" style={invertLayer} />}
 
       <View style={styles.bar}>
         <Pressable onPress={() => setShowJump(true)} style={styles.chip}>
@@ -173,6 +172,26 @@ export default function ReaderScreen({ route, navigation }: Props) {
     </View>
   );
 }
+
+/**
+ * A white layer in "difference" blend mode inverts everything beneath it:
+ * white pages become black, black text becomes white. Zoom and scrolling
+ * keep working because the viewer itself is untouched.
+ *
+ * The prop was named experimental_mixBlendMode when it landed in React
+ * Native 0.76 and mixBlendMode afterwards, so both are set. Blend modes
+ * need the new architecture, which this app runs on.
+ */
+const invertLayer: any = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: '#FFFFFF',
+  experimental_mixBlendMode: 'difference',
+  mixBlendMode: 'difference',
+};
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },

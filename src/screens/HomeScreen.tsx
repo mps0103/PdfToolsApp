@@ -1,131 +1,128 @@
 import React, { useMemo, useState } from 'react';
-import {
-  FlatList,
-  Pressable,
-  SectionList,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CATEGORIES, TOOLS, Tool } from '../tools/registry';
 import { colors, radius, space, type } from '../theme';
 
 type Props = { navigation: any };
 
-// A placeholder keeps the last row of an odd-length section at half width
-// instead of letting the single tile stretch across the grid.
-const SPACER = '__spacer__';
-type Cell = Tool | typeof SPACER;
+// One flat list of rows, built here rather than by nesting a FlatList inside
+// a SectionList. Every row is either a heading or a pair of tiles, so the
+// grid alignment is fully determined by this file.
+type Row =
+  | { kind: 'heading'; key: string; label: string }
+  | { kind: 'pair'; key: string; left: Tool; right: Tool | null };
 
-const Tile = ({ tool, onPress }: { tool: Tool; onPress: () => void }) => (
-  <Pressable
-    onPress={onPress}
-    style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
-    accessibilityRole="button"
-    accessibilityLabel={tool.title}
-  >
-    <View style={styles.tileTop}>
-      <Text style={type.tile} numberOfLines={2}>
-        {tool.title}
-      </Text>
-      {!tool.ready && <View style={styles.soonDot} />}
-    </View>
-    <Text style={[type.hint, styles.tileHint]} numberOfLines={2}>
-      {tool.hint}
-    </Text>
-  </Pressable>
-);
+const TILE_HEIGHT = 88;
 
 export default function HomeScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
-  const insets = useSafeAreaInsets();
 
-  const sections = useMemo(() => {
+  const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const match = (t: Tool) =>
       !q || t.title.toLowerCase().includes(q) || t.hint.toLowerCase().includes(q);
 
-    return CATEGORIES.map(c => {
-      const found = TOOLS.filter(t => t.category === c && match(t));
-      const cells: Cell[] = [...found];
-      if (cells.length % 2 === 1) cells.push(SPACER);
-      return { title: c, data: [cells], count: found.length };
-    }).filter(s => s.count > 0);
+    const out: Row[] = [];
+    for (const category of CATEGORIES) {
+      const found = TOOLS.filter(t => t.category === category && match(t));
+      if (!found.length) continue;
+
+      out.push({ kind: 'heading', key: `h-${category}`, label: category.toUpperCase() });
+      for (let i = 0; i < found.length; i += 2) {
+        out.push({
+          kind: 'pair',
+          key: `r-${found[i].id}`,
+          left: found[i],
+          right: found[i + 1] ?? null,
+        });
+      }
+    }
+    return out;
   }, [query]);
 
   const open = (tool: Tool) => navigation.navigate('Tool', { id: tool.id });
 
+  const tile = (tool: Tool) => (
+    <Pressable
+      onPress={() => open(tool)}
+      style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
+      accessibilityRole="button"
+      accessibilityLabel={tool.title}
+    >
+      <Text style={type.tile} numberOfLines={1}>
+        {tool.title}
+      </Text>
+      <Text style={[type.hint, styles.tileHint]} numberOfLines={2}>
+        {tool.hint}
+      </Text>
+    </Pressable>
+  );
+
   return (
     <View style={styles.root}>
-      {/* The status bar is drawn over the app, so the header has to clear it. */}
-      <View style={[styles.header, { paddingTop: insets.top + space.md }]}>
-        <View style={{ flex: 1 }}>
-          <Text style={type.title}>PDF Tools</Text>
-          <Text style={[type.hint, { marginTop: space.xs }]}>
-            Everything runs on this phone. Nothing is uploaded.
-          </Text>
-        </View>
-        <Pressable onPress={() => navigation.navigate('Files')} style={styles.filesButton}>
-          <Text style={type.body}>Files</Text>
-        </Pressable>
-      </View>
+      <FlatList
+        data={rows}
+        keyExtractor={r => r.key}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View>
+            <View style={styles.header}>
+              <View style={{ flex: 1 }}>
+                <Text style={type.title}>PDF Tools</Text>
+                <Text style={[type.hint, { marginTop: space.xs }]}> 
+                  Everything runs on this phone. Nothing is uploaded.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => navigation.navigate('Files')}
+                style={styles.filesButton}
+              >
+                <Text style={type.body}>Files</Text>
+              </Pressable>
+            </View>
 
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search tools"
-        placeholderTextColor={colors.textDim}
-        style={styles.search}
-      />
-
-      {sections.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={type.body}>No tool matches “{query}”.</Text>
-          <Text style={[type.hint, { marginTop: space.sm }]}> 
-            Try “merge”, “password” or “image”.
-          </Text>
-        </View>
-      ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={(_, i) => String(i)}
-          contentContainerStyle={{ paddingBottom: space.xl }}
-          stickySectionHeadersEnabled={false}
-          renderSectionHeader={({ section }) => (
-            <Text style={styles.sectionHeader}>{section.title.toUpperCase()}</Text>
-          )}
-          renderItem={({ item }) => (
-            <FlatList
-              data={item}
-              numColumns={2}
-              scrollEnabled={false}
-              keyExtractor={(cell, i) => (cell === SPACER ? `spacer-${i}` : (cell as Tool).id)}
-              columnWrapperStyle={styles.row}
-              contentContainerStyle={{ gap: space.sm }}
-              renderItem={({ item: cell }) =>
-                cell === SPACER ? (
-                  <View style={styles.spacer} />
-                ) : (
-                  <Tile tool={cell as Tool} onPress={() => open(cell as Tool)} />
-                )
-              }
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search tools"
+              placeholderTextColor={colors.textDim}
+              style={styles.search}
             />
-          )}
-        />
-      )}
+          </View>
+        }
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={type.body}>No tool matches that search.</Text>
+            <Text style={[type.hint, { marginTop: space.sm }]}> 
+              Try merge, password or image.
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) =>
+          item.kind === 'heading' ? (
+            <Text style={styles.heading}>{item.label}</Text>
+          ) : (
+            <View style={styles.row}>
+              {tile(item.left)}
+              {item.right ? tile(item.right) : <View style={styles.tileGhost} />}
+            </View>
+          )
+        }
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  listContent: { paddingBottom: space.xl },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: space.md,
     paddingHorizontal: space.lg,
+    paddingTop: space.lg,
   },
   filesButton: {
     paddingVertical: space.sm,
@@ -147,37 +144,31 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 15,
   },
-  sectionHeader: {
+  heading: {
     ...type.section,
     paddingHorizontal: space.lg,
     paddingTop: space.lg,
     paddingBottom: space.sm,
   },
-  row: { gap: space.sm, paddingHorizontal: space.lg },
+  row: {
+    flexDirection: 'row',
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.md,
+  },
   tile: {
     flex: 1,
+    height: TILE_HEIGHT,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.md,
     padding: space.md,
-    // Fixed height keeps every tile identical regardless of how long its
-    // title or hint runs. Without it, a two-line neighbour stretches the
-    // row and the text inside drifts apart.
-    height: 104,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
-  spacer: { flex: 1 },
+  // Fills the empty half of an odd row so the last tile keeps its width.
+  tileGhost: { flex: 1, height: TILE_HEIGHT },
   tilePressed: { backgroundColor: colors.surfaceAlt, borderColor: colors.accent },
-  tileTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   tileHint: { marginTop: space.xs },
-  soonDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.warn,
-    marginLeft: space.sm,
-    marginTop: 6,
-  },
   empty: { padding: space.xl, alignItems: 'center' },
 });

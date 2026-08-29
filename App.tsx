@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
@@ -13,6 +13,7 @@ import FilesScreen from './src/screens/FilesScreen';
 import DiagnosticsScreen from './src/screens/DiagnosticsScreen';
 import ReaderScreen from './src/screens/ReaderScreen';
 import AdBanner from './src/components/AdBanner';
+import Splash from './src/components/Splash';
 import { findTool } from './src/tools/registry';
 import { colors } from './src/theme';
 
@@ -31,6 +32,8 @@ const navTheme = {
 };
 
 export default function App() {
+  const [splashDone, setSplashDone] = useState(false);
+
   useEffect(() => {
     mobileAds().initialize();
   }, []);
@@ -38,7 +41,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" />
-      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
         <NavigationContainer theme={navTheme}>
           <Stack.Navigator
             id={undefined}
@@ -89,7 +92,11 @@ export default function App() {
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: colors.adSlot }}>
           <AdBanner />
         </SafeAreaView>
-      </View>
+      </SafeAreaView>
+
+      {/* Sits above everything, including the safe areas, so the red fills
+          the whole screen while it plays. */}
+      {!splashDone && <Splash onDone={() => setSplashDone(true)} />}
     </SafeAreaProvider>
   );
 }

@@ -1,5 +1,5 @@
 import RNFS from 'react-native-fs';
-import { Platform, Share } from 'react-native';
+import Share from 'react-native-share';
 
 export const OUT_DIR = `${RNFS.DocumentDirectoryPath}/output`;
 
@@ -41,9 +41,67 @@ export function baseName(name: string) {
   return dot > 0 ? name.slice(0, dot) : name;
 }
 
+/**
+ * Renames a file in place, keeping its original extension. Returns the new
+ * path. Illegal characters are stripped and a suffix is added rather than
+ * overwriting anything already there.
+ */
+export async function renameFile(path: string, newName: string): Promise<string> {
+  const from = decodeURI(path.replace('file://', ''));
+  const dir = from.slice(0, from.lastIndexOf('/'));
+  const dot = from.lastIndexOf('.');
+  const slash = from.lastIndexOf('/');
+  const ext = dot > slash ? from.slice(dot) : '';
+
+  let stem = newName.trim().replace(/[\\/:*?"<>|]/g, '').trim();
+  if (!stem) throw new Error('Enter a name.');
+  if (ext && stem.toLowerCase().endsWith(ext.toLowerCase())) {
+    stem = stem.slice(0, stem.length - ext.length);
+  }
+
+  let target = `${dir}/${stem}${ext}`;
+  let n = 1;
+  while (target !== from && (await RNFS.exists(target))) {
+    target = `${dir}/${stem} (${n})${ext}`;
+    n++;
+  }
+
+  if (target === from) return from;
+  await RNFS.moveFile(from, target);
+  return target;
+}
+
+const mimeFor = (name: string) => {
+  switch (name.split('.').pop()?.toLowerCase()) {
+    case 'pdf':
+      return 'application/pdf';
+    case 'txt':
+      return 'text/plain';
+    case 'png':
+      return 'image/png';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    default:
+      return '*/*';
+  }
+};
+
+/**
+ * React Native's own Share only accepts a url on iOS. On Android it sends
+ * text alone, which is why WhatsApp reported an empty message and no file
+ * ever arrived. react-native-share attaches the file properly.
+ */
 export async function shareFile(path: string) {
-  const url = Platform.OS === 'android' ? `file://${path}` : path;
-  await Share.share({ url, title: 'Save or share' });
+  const name = path.split('/').pop() ?? 'document.pdf';
+  const url = path.startsWith('file://') ? path : `file://${path}`;
+
+  await Share.open({
+    url,
+    type: mimeFor(name),
+    filename: name,
+    failOnCancel: false,
+  });
 }
 
 export async function fileSize(path: string): Promise<number> {

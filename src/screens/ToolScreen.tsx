@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,7 +14,8 @@ import {
 import { findTool } from '../tools/registry';
 import { pickFor, formatSize, PickedFile } from '../lib/files';
 import { scanDocument } from '../lib/scanner';
-import { shareFile } from '../lib/fs';
+import { renameFile, shareFile } from '../lib/fs';
+import ImageCropPicker from 'react-native-image-crop-picker';
 import { PdfSave } from '../native/PdfSave';
 import {
   CANVAS_TOOLS,
@@ -49,8 +51,71 @@ export default function ToolScreen({ route, navigation }: Props) {
   // Some tools write a folder of images rather than one file.
   const resultIsFolder = !!result && !/\.[a-z0-9]{2,4}$/i.test(result.path);
 
+  const [renaming, setRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+
+  const fileNameOf = (p: string) => p.split('/').pop() ?? '';
+
+  // Images can be cropped, rotated and straightened before they are turned
+  // into pages. The cropper writes a new file, so the original in the
+  // gallery is never touched.
+  const editImage = async (index: number) => {
+    const target = files[index];
+    try {
+      const edited = await ImageCropPicker.openCropper({
+        path: target.uri,
+        mediaType: 'photo',
+        freeStyleCropEnabled: true,
+        cropperToolbarTitle: 'Edit image',
+        cropperActiveWidgetColor: colors.accent,
+        cropperStatusBarLight: false,
+        cropperToolbarColor: colors.bg,
+        cropperToolbarWidgetColor: '#FFFFFF',
+        compressImageQuality: 0.95,
+        includeBase64: false,
+      });
+
+      setFiles(list =>
+        list.map((f, i) =>
+          i === index
+            ? { ...f, uri: edited.path, size: edited.size ?? null, type: edited.mime ?? f.type }
+            : f,
+        ),
+      );
+      setResult(null);
+    } catch (e: any) {
+      // Backing out of the cropper is not an error.
+      if (e?.code !== 'E_PICKER_CANCELLED') {
+        Alert.alert('Could not edit', e?.message ?? 'That image could not be opened.');
+      }
+    }
+  };
+
+  const isImageInput = tool.input === 'images';
+
+  const openRename = () => {
+    if (!result) return;
+    const name = fileNameOf(result.path);
+    const dot = name.lastIndexOf('.');
+    setNameDraft(dot > 0 ? name.slice(0, dot) : name);
+    setRenaming(true);
+  };
+
+  const applyRename = async () => {
+    if (!result) return;
+    try {
+      const moved = await renameFile(result.path, nameDraft);
+      setResult({ ...result, path: moved });
+      setRenaming(false);
+    } catch (e: any) {
+      Alert.alert('Could not rename', e?.message ?? 'Try a different name.');
+    }
+  };
+
   const set = <K extends keyof ToolOptions>(k: K, v: ToolOptions[K]) =>
     setOpts(o => ({ ...o, [k]: v }));
+
+  
 
   const choose = async () => {
     try {
@@ -74,7 +139,12 @@ export default function ToolScreen({ route, navigation }: Props) {
       }
 
       if (VISUAL_TOOLS.includes(tool.id)) {
-        navigation.navigate('Pages', { file: picked[0], title: tool.title });
+        navigation.navigate('Pages', {
+          file: picked[0],
+          title: tool.title,
+          mode:
+            tool.id === 'rotate' ? 'rotate' : tool.id === 'delete-pages' ? 'delete' : 'organize',
+        });
         return;
       }
 
@@ -142,12 +212,19 @@ export default function ToolScreen({ route, navigation }: Props) {
         contentContainerStyle={{ gap: space.sm, paddingTop: space.md }}
         renderItem={({ item, index }) => (
           <View style={styles.row}>
-            <View style={{ flex: 1 }}>
+            <Pressable
+              onPress={() => isImageInput && editImage(index)}
+              disabled={!isImageInput}
+              style={{ flex: 1 }}
+            >
               <Text style={type.body} numberOfLines={1}>
                 {item.name}
               </Text>
-              <Text style={type.hint}>{formatSize(item.size)}</Text>
-            </View>
+              <Text style={type.hint}>
+                {formatSize(item.size)}
+                {isImageInput ? '  ·  Tap to crop or rotate' : ''}
+              </Text>
+            </Pressable>
             <Pressable onPress={() => setFiles(f => f.filter((_, i) => i !== index))} hitSlop={12}>
               <Text style={{ color: colors.textDim, fontSize: 18 }}>×</Text>
             </Pressable>
@@ -426,6 +503,11 @@ export default function ToolScreen({ route, navigation }: Props) {
               {result.note}
             </Text>
           )}
+          {!resultIsFolder && (
+            <Pressable onPress={openRename} style={styles.secondary}>
+              <Text style={[type.body, { fontWeight: '600' }]}>Rename</Text>
+            </Pressable>
+          )}
           {!resultIsFolder && result.path.toLowerCase().endsWith('.pdf') && (
             <Pressable
               onPress={() =>
@@ -470,6 +552,35 @@ export default function ToolScreen({ route, navigation }: Props) {
           )}
         </View>
       )}
+
+      <Modal visible={renaming} transparent animationType="fade">
+        <View style={styles.modalWrap}>
+          <View style={styles.modal}>
+            <Text style={[type.body, { fontWeight: '600' }]}>Rename file</Text>
+            <Text style={[type.hint, { marginTop: space.xs }]}>The file extension stays the same.</Text>
+            <TextInput
+              value={nameDraft}
+              onChangeText={setNameDraft}
+              autoFocus
+              selectTextOnFocus
+              placeholder="File name"
+              placeholderTextColor={colors.textDim}
+              style={styles.input}
+            />
+            <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.md }}>
+              <Pressable
+                onPress={() => setRenaming(false)}
+                style={[styles.secondary, { flex: 1 }]}
+              >
+                <Text style={type.body}>Cancel</Text>
+              </Pressable>
+              <Pressable onPress={applyRename} style={[styles.cta, { flex: 1, marginTop: 0 }]}>
+                <Text style={styles.ctaText}>Save name</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -575,6 +686,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
+  },
+  modalWrap: {
+    flex: 1,
+    backgroundColor: '#000000AA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: space.lg,
+  },
+  modal: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: space.lg,
   },
   secondary: {
     marginTop: space.md,

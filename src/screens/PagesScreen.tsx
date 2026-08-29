@@ -11,14 +11,17 @@ import {
 import PageThumb from '../components/PageThumb';
 import { PdfRender, RENDER_ERRORS } from '../native/PdfRender';
 import { applyPageEdits } from '../workers/pdfLib';
-import { shareFile } from '../lib/fs';
+import ResultCard from '../components/ResultCard';
 import { PickedFile } from '../lib/files';
 import { colors, radius, space, type } from '../theme';
 
 type Props = { route: any; navigation: any };
 
-export default function PagesScreen({ route }: Props) {
+export default function PagesScreen({ route, navigation }: Props) {
   const file: PickedFile = route.params.file;
+  // Each tool gets only its own action, so "Reorder pages" does not offer
+  // rotation and "Rotate" does not offer deletion.
+  const mode: 'organize' | 'delete' | 'rotate' = route.params.mode ?? 'organize';
   const src = file.uri;
 
   const [order, setOrder] = useState<number[] | null>(null);
@@ -27,6 +30,7 @@ export default function PagesScreen({ route }: Props) {
   const [selected, setSelected] = useState<number | null>(null); // position in `order`
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ path: string; note?: string } | null>(null);
 
   useEffect(() => {
     PdfRender.pageCount(src)
@@ -89,7 +93,7 @@ export default function PagesScreen({ route }: Props) {
     setBusy(true);
     try {
       const res = await applyPageEdits(file, { order, rotation });
-      await shareFile(res.path);
+      setResult(res);
     } catch (e: any) {
       Alert.alert('Could not save', e?.message ?? 'Something went wrong.');
     } finally {
@@ -135,10 +139,23 @@ export default function PagesScreen({ route }: Props) {
       />
 
       <View style={styles.bar}>
-        <Action label="◀" onPress={() => move(-1)} disabled={selected === null} />
-        <Action label="Rotate" onPress={rotateSelected} disabled={selected === null} />
-        <Action label="Remove" onPress={removeSelected} disabled={selected === null} danger />
-        <Action label="▶" onPress={() => move(1)} disabled={selected === null} />
+        {mode === 'organize' && (
+          <>
+            <Action label="◀ Move left" onPress={() => move(-1)} disabled={selected === null} />
+            <Action label="Move right ▶" onPress={() => move(1)} disabled={selected === null} />
+          </>
+        )}
+        {mode === 'rotate' && (
+          <Action label="Rotate 90°" onPress={rotateSelected} disabled={selected === null} />
+        )}
+        {mode === 'delete' && (
+          <Action
+            label="Remove page"
+            onPress={removeSelected}
+            disabled={selected === null}
+            danger
+          />
+        )}
       </View>
 
       <Pressable
@@ -149,8 +166,21 @@ export default function PagesScreen({ route }: Props) {
         <Text style={styles.ctaText}>{busy ? 'Saving…' : 'Save changes'}</Text>
       </Pressable>
 
+      {result && (
+        <ResultCard
+          path={result.path}
+          note={result.note}
+          navigation={navigation}
+          onPathChange={next => setResult({ ...result, path: next })}
+        />
+      )}
+
       <Text style={[type.hint, { textAlign: 'center', paddingBottom: space.md }]}>
-        Tap a page to select it, then move, rotate or remove it.
+        {mode === 'organize'
+          ? 'Tap a page to select it, then move it left or right.'
+          : mode === 'rotate'
+            ? 'Tap a page to select it, then rotate it.'
+            : 'Tap a page to select it, then remove it.'}
       </Text>
     </View>
   );

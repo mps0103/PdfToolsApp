@@ -2,15 +2,17 @@ import React, { useCallback, useState } from 'react';
 import {
   Alert,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import RNFS from 'react-native-fs';
-import { OUT_DIR, ensureOutDir, shareFile } from '../lib/fs';
+import { OUT_DIR, ensureOutDir, renameFile, shareFile } from '../lib/fs';
 import { formatSize } from '../lib/files';
 import { PdfSave } from '../native/PdfSave';
 import { colors, radius, space, type } from '../theme';
@@ -20,6 +22,8 @@ type Entry = { name: string; path: string; size: number; when: number; isDir: bo
 export default function FilesScreen({ navigation }: any) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [renaming, setRenaming] = useState<Entry | null>(null);
+  const [nameDraft, setNameDraft] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,6 +67,23 @@ export default function FilesScreen({ navigation }: any) {
     }
   };
 
+  const openRename = (entry: Entry) => {
+    const dot = entry.name.lastIndexOf('.');
+    setNameDraft(dot > 0 ? entry.name.slice(0, dot) : entry.name);
+    setRenaming(entry);
+  };
+
+  const applyRename = async () => {
+    if (!renaming) return;
+    try {
+      await renameFile(renaming.path, nameDraft);
+      setRenaming(null);
+      load();
+    } catch (e: any) {
+      Alert.alert('Could not rename', e?.message ?? 'Try a different name.');
+    }
+  };
+
   const remove = (entry: Entry) =>
     Alert.alert('Delete this file?', entry.name, [
       { text: 'Cancel', style: 'cancel' },
@@ -94,6 +115,7 @@ export default function FilesScreen({ navigation }: any) {
   }
 
   return (
+    <>
     <FlatList
       style={styles.root}
       data={entries}
@@ -150,6 +172,9 @@ export default function FilesScreen({ navigation }: any) {
                 <Text style={type.body}>Read</Text>
               </Pressable>
             )}
+            <Pressable onPress={() => openRename(item)} style={styles.action}>
+              <Text style={type.body}>Rename</Text>
+            </Pressable>
             <Pressable onPress={() => shareFile(item.path)} style={styles.action}>
               <Text style={type.body}>Share</Text>
             </Pressable>
@@ -163,6 +188,33 @@ export default function FilesScreen({ navigation }: any) {
         </View>
       )}
     />
+
+    <Modal visible={renaming !== null} transparent animationType="fade">
+      <View style={styles.modalWrap}>
+        <View style={styles.modal}>
+          <Text style={[type.body, { fontWeight: '600' }]}>Rename file</Text>
+          <Text style={[type.hint, { marginTop: space.xs }]}>The file extension stays the same.</Text>
+          <TextInput
+            value={nameDraft}
+            onChangeText={setNameDraft}
+            autoFocus
+            selectTextOnFocus
+            placeholder="File name"
+            placeholderTextColor={colors.textDim}
+            style={styles.input}
+          />
+          <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.md }}>
+            <Pressable onPress={() => setRenaming(null)} style={[styles.action, { flex: 1 }]}>
+              <Text style={type.body}>Cancel</Text>
+            </Pressable>
+            <Pressable onPress={applyRename} style={[styles.cta, { flex: 1 }]}>
+              <Text style={styles.ctaText}>Save name</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+    </>
   );
 }
 
@@ -183,4 +235,33 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     backgroundColor: colors.surfaceAlt,
   },
+  modalWrap: {
+    flex: 1,
+    backgroundColor: '#000000AA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: space.lg,
+  },
+  modal: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: space.lg,
+  },
+  input: {
+    marginTop: space.md,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+    color: colors.text,
+    fontSize: 15,
+  },
+  cta: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: space.md,
+    alignItems: 'center',
+  },
+  ctaText: { color: '#0B1020', fontSize: 15, fontWeight: '700' },
 });

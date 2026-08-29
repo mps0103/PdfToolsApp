@@ -29,19 +29,32 @@ export default function AdBanner() {
     // Google's consent SDK. Outside the EEA and UK this resolves
     // immediately with no form shown.
     (async () => {
+      let status = AdsConsentStatus.UNKNOWN;
+
       try {
         const info = await AdsConsent.requestInfoUpdate();
+        status = info.status;
         if (info.isConsentFormAvailable && info.status === AdsConsentStatus.REQUIRED) {
           await AdsConsent.showForm();
+          status = (await AdsConsent.getConsentInfo()).status;
         }
+      } catch {
+        // Consent failures must not remove the ad slot.
+      }
+
+      try {
+        // Only meaningful where a TC string exists. Outside the EEA and UK
+        // there is none, and this throws on the null rather than returning
+        // empty, so it gets its own guard.
         const choices = await AdsConsent.getUserChoices();
         if (alive) setPersonalised(Boolean(choices.selectPersonalisedAds));
       } catch {
-        // Consent failures must not remove the ad slot — serve
-        // non-personalised ads instead.
-      } finally {
-        if (alive) setReady(true);
+        // No consent framework in play: personalised ads are permitted
+        // unless consent was required and not granted.
+        if (alive) setPersonalised(status === AdsConsentStatus.NOT_REQUIRED);
       }
+
+      if (alive) setReady(true);
     })();
 
     return () => {
