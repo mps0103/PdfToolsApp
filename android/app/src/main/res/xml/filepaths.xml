@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Output folder lives under files/, temporary picks under cache/. -->
+    <files-path name="app_files" path="." />
+    <cache-path name="app_cache" path="." />
+    <external-files-path name="ext_files" path="." />
+    <external-cache-path name="ext_cache" path="." />
+    <external-path name="external" path="." />
+</paths>

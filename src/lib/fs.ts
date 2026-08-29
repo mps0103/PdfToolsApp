@@ -1,5 +1,5 @@
 import RNFS from 'react-native-fs';
-import Share from 'react-native-share';
+import { PdfShare } from '../native/PdfShare';
 
 export const OUT_DIR = `${RNFS.DocumentDirectoryPath}/output`;
 
@@ -94,14 +94,7 @@ const mimeFor = (name: string) => {
  */
 export async function shareFile(path: string) {
   const name = path.split('/').pop() ?? 'document.pdf';
-  const url = path.startsWith('file://') ? path : `file://${path}`;
-
-  await Share.open({
-    url,
-    type: mimeFor(name),
-    filename: name,
-    failOnCancel: false,
-  });
+  await PdfShare.file(path, mimeFor(name), 'Share file');
 }
 
 export async function fileSize(path: string): Promise<number> {

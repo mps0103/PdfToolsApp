@@ -16,6 +16,11 @@ type Props = {
  * save behave the same way regardless of which screen produced the file.
  */
 export default function ResultCard({ path, note, navigation, onPathChange }: Props) {
+  const share = (target: string) => {
+    shareFile(target).catch(e =>
+      Alert.alert('Could not share', e?.message ?? 'Something went wrong.'),
+    );
+  };
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState('');
 
@@ -74,7 +79,7 @@ export default function ResultCard({ path, note, navigation, onPathChange }: Pro
             <Text style={type.body}>Read</Text>
           </Pressable>
         )}
-        <Pressable onPress={() => shareFile(path)} style={styles.action}>
+        <Pressable onPress={() => share(path)} style={styles.action}>
           <Text style={type.body}>Share</Text>
         </Pressable>
         <Pressable onPress={save} style={styles.action}>

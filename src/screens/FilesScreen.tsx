@@ -20,6 +20,11 @@ import { colors, radius, space, type } from '../theme';
 type Entry = { name: string; path: string; size: number; when: number; isDir: boolean };
 
 export default function FilesScreen({ navigation }: any) {
+  const share = (target: string) => {
+    shareFile(target).catch(e =>
+      Alert.alert('Could not share', e?.message ?? 'Something went wrong.'),
+    );
+  };
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
   const [renaming, setRenaming] = useState<Entry | null>(null);
@@ -175,7 +180,7 @@ export default function FilesScreen({ navigation }: any) {
             <Pressable onPress={() => openRename(item)} style={styles.action}>
               <Text style={type.body}>Rename</Text>
             </Pressable>
-            <Pressable onPress={() => shareFile(item.path)} style={styles.action}>
+            <Pressable onPress={() => share(item.path)} style={styles.action}>
               <Text style={type.body}>Share</Text>
             </Pressable>
             <Pressable onPress={() => save(item)} style={styles.action}>

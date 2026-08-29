@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Modal,
   Pressable,
@@ -17,6 +18,11 @@ import { colors, radius, space, type } from '../theme';
 type Props = { route: any; navigation: any };
 
 export default function ReaderScreen({ route, navigation }: Props) {
+  const share = (target: string) => {
+    shareFile(target).catch(e =>
+      Alert.alert('Could not share', e?.message ?? 'Something went wrong.'),
+    );
+  };
   const file: PickedFile = route.params.file;
 
   const [page, setPage] = useState(1);
@@ -93,7 +99,7 @@ export default function ReaderScreen({ route, navigation }: Props) {
         <Pressable onPress={() => setHorizontal(h => !h)} style={styles.chip}>
           <Text style={type.body}>{horizontal ? 'Scroll' : 'Swipe'}</Text>
         </Pressable>
-        <Pressable onPress={() => shareFile(file.uri)} style={styles.chip}>
+        <Pressable onPress={() => share(file.uri)} style={styles.chip}>
           <Text style={type.body}>Share</Text>
         </Pressable>
       </View>

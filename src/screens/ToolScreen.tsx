@@ -33,6 +33,11 @@ import { colors, radius, space, type } from '../theme';
 type Props = { route: any; navigation: any };
 
 export default function ToolScreen({ route, navigation }: Props) {
+  const share = (target: string) => {
+    shareFile(target).catch(e =>
+      Alert.alert('Could not share', e?.message ?? 'Something went wrong.'),
+    );
+  };
   const tool = findTool(route.params.id)!;
   const runner = RUNNERS[tool.id];
   // These tools hand off to another screen instead of running a worker,
@@ -527,7 +532,7 @@ export default function ToolScreen({ route, navigation }: Props) {
             </Pressable>
           )}
           {!resultIsFolder && (
-            <Pressable onPress={() => shareFile(result.path)} style={styles.secondary}>
+            <Pressable onPress={() => share(result.path)} style={styles.secondary}>
               <Text style={[type.body, { fontWeight: '600' }]}>Share</Text>
             </Pressable>
           )}

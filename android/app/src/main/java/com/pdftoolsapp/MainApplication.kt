@@ -12,6 +12,7 @@ import com.pdftoolsapp.pdfcompress.PdfCompressPackage
 import com.pdftoolsapp.pdfextract.PdfExtractPackage
 import com.pdftoolsapp.pdfocr.PdfOcrPackage
 import com.pdftoolsapp.pdfsave.PdfSavePackage
+import com.pdftoolsapp.pdfshare.PdfSharePackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -28,6 +29,7 @@ class MainApplication : Application(), ReactApplication {
           add(PdfExtractPackage())
           add(PdfOcrPackage())
           add(PdfSavePackage())
+          add(PdfSharePackage())
         },
     )
   }
