@@ -3,6 +3,9 @@ import { PdfShare } from '../native/PdfShare';
 
 export const OUT_DIR = `${RNFS.DocumentDirectoryPath}/output`;
 
+/** Saved signatures live outside OUT_DIR so they never show up in Files. */
+export const SIGNATURE_DIR = `${RNFS.DocumentDirectoryPath}/signatures`;
+
 export async function ensureOutDir() {
   if (!(await RNFS.exists(OUT_DIR))) await RNFS.mkdir(OUT_DIR);
 }
@@ -105,4 +108,45 @@ export async function fileSize(path: string): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Signature library                                                      */
+/* ---------------------------------------------------------------------- */
+
+export async function ensureSignatureDir() {
+  if (!(await RNFS.exists(SIGNATURE_DIR))) await RNFS.mkdir(SIGNATURE_DIR);
+}
+
+/** Saved signatures, newest first. */
+export async function listSignatures(): Promise<string[]> {
+  await ensureSignatureDir();
+  const items = await RNFS.readDir(SIGNATURE_DIR).catch(() => []);
+  return items
+    .filter(i => i.isFile() && i.name.toLowerCase().endsWith('.png'))
+    .sort((a, b) => (b.mtime?.getTime() ?? 0) - (a.mtime?.getTime() ?? 0))
+    .map(i => i.path);
+}
+
+/**
+ * Moves a freshly processed signature out of the cache and into the
+ * permanent library, so it survives until the user deletes it.
+ */
+export async function keepSignature(tempPath: string): Promise<string> {
+  await ensureSignatureDir();
+  const target = `${SIGNATURE_DIR}/sig-${Date.now()}.png`;
+  await RNFS.moveFile(decodeURI(tempPath.replace('file://', '')), target);
+  return target;
+}
+
+export async function deleteSignature(path: string) {
+  await RNFS.unlink(decodeURI(path.replace('file://', ''))).catch(() => {});
+}
+
+/**
+ * Scratch path for a signature still being adjusted. Lives in the cache so
+ * abandoned attempts get cleaned up by the system rather than piling up.
+ */
+export function signatureTempPath() {
+  return `${RNFS.CachesDirectoryPath}/sig-preview-${Date.now()}.png`;
 }

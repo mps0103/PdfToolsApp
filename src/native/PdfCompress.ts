@@ -7,6 +7,12 @@ export type RewriteResult = {
   imagesRewritten: number;
 };
 
+export type SignatureResult = {
+  path: string;
+  width: number;
+  height: number;
+};
+
 type PdfCompressNative = {
   rewriteImages(
     srcPath: string,
@@ -15,6 +21,11 @@ type PdfCompressNative = {
     maxEdge: number,
     grayscale: boolean,
   ): Promise<RewriteResult>;
+  signatureFromImage(
+    srcPath: string,
+    destPath: string,
+    threshold: number,
+  ): Promise<SignatureResult>;
 };
 
 const native = NativeModules.PdfCompress as PdfCompressNative | undefined;
@@ -40,6 +51,11 @@ export const COMPRESSION_LEVELS = {
 
 export type CompressionLevel = keyof typeof COMPRESSION_LEVELS;
 
+/** Luminance cutoff for signature extraction, 0-255. */
+export const SIGNATURE_THRESHOLD_DEFAULT = 200;
+export const SIGNATURE_THRESHOLD_MIN = 100;
+export const SIGNATURE_THRESHOLD_MAX = 245;
+
 export const PdfCompress = {
   compress: (src: string, dest: string, level: CompressionLevel = 'balanced') => {
     const { quality, maxEdge } = COMPRESSION_LEVELS[level];
@@ -49,6 +65,16 @@ export const PdfCompress = {
   grayscale: (src: string, dest: string) =>
     // Keep resolution, drop colour only.
     required().rewriteImages(src, dest, 0.8, 0, true),
+
+  /**
+   * Strips the paper from a photographed signature, leaving transparent ink.
+   * 200 suits black ink on white paper. Lower it for photos taken in warm
+   * indoor light, where the paper itself reads as grey and would otherwise
+   * survive the cut.
+   */
+  signature: (src: string, dest: string, threshold = SIGNATURE_THRESHOLD_DEFAULT) =>
+    required().signatureFromImage(src, dest, threshold),
 };
 
 export const COMPRESS_ERRORS = { MEMORY: 'E_MEMORY', IO: 'E_IO' };
+export const SIGNATURE_ERRORS = { EMPTY: 'E_EMPTY', MEMORY: 'E_MEMORY', IO: 'E_IO' };

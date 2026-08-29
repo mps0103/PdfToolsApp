@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, degrees, rgb } from 'pdf-lib';
 import { PickedFile } from './files';
 import { baseName, readBase64, writeOutput } from './fs';
 
@@ -8,7 +8,11 @@ export type Annotation =
   | { kind: 'ink'; page: number; points: Point[]; color: string; width: number }
   | { kind: 'highlight'; page: number; rect: Rect; color: string }
   | { kind: 'text'; page: number; at: Point; value: string; size: number; color: string }
-  | { kind: 'whiteout'; page: number; rect: Rect };
+  | { kind: 'whiteout'; page: number; rect: Rect }
+  // path points at a transparent PNG in the signature library.
+  // rotation is degrees clockwise about the rect's centre, as the canvas
+  // rotates it.
+  | { kind: 'signature'; page: number; path: string; rect: Rect; rotation: number };
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
@@ -103,6 +107,10 @@ export async function commitAnnotations(
   const doc = await PDFDocument.load(await readBase64(file.uri));
   const font = await doc.embedFont(StandardFonts.Helvetica);
 
+  // The same signature is often placed on several pages, so each PNG is
+  // embedded once and reused rather than duplicated in the file.
+  const embeddedSignatures = new Map<string, any>();
+
   for (const a of annotations) {
     const page = doc.getPage(a.page);
     const frame = frames[a.page];
@@ -152,6 +160,45 @@ export async function commitAnnotations(
           size,
           font,
           color: toRgb(a.color),
+        });
+        break;
+      }
+
+      case 'signature': {
+        let img = embeddedSignatures.get(a.path);
+        if (!img) {
+          // embedPng keeps the alpha channel, so the page shows through
+          // around the ink instead of a white box.
+          img = await doc.embedPng(await readBase64(a.path));
+          embeddedSignatures.set(a.path, img);
+        }
+
+        const w = a.rect.w * s;
+        const h = a.rect.h * s;
+        const x = a.rect.x * s;
+        const y = frame.heightPt - (a.rect.y + a.rect.h) * s;
+
+        if (!a.rotation) {
+          page.drawImage(img, { x, y, width: w, height: h });
+          break;
+        }
+
+        // pdf-lib rotates about the image's bottom-left anchor, while the
+        // canvas rotates about the centre. Rotating the corner offset by the
+        // same angle puts the anchor where it needs to be for the two to
+        // agree. The sign flips because PDF angles run anticlockwise.
+        const rad = (-a.rotation * Math.PI) / 180;
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        const ox = -w / 2;
+        const oy = -h / 2;
+
+        page.drawImage(img, {
+          x: cx + ox * Math.cos(rad) - oy * Math.sin(rad),
+          y: cy + ox * Math.sin(rad) + oy * Math.cos(rad),
+          width: w,
+          height: h,
+          rotate: degrees(-a.rotation),
         });
         break;
       }

@@ -21,6 +21,7 @@ export const type = {
   tile: { fontSize: 15, fontWeight: '600' as const, color: colors.text },
   hint: { fontSize: 12, color: colors.textDim, lineHeight: 16 },
   body: { fontSize: 15, color: colors.text },
+  bodySmall: { fontSize: 13, color: colors.text },
 };
 
 // Reserved height for the anchored adaptive banner. Never let content
