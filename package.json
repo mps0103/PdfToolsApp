@@ -10,10 +10,24 @@
     "test": "jest"
   },
   "dependencies": {
+    "@craftzdog/react-native-buffer": "^6.1.2",
+    "@react-native-documents/picker": "^12.0.2",
+    "@react-native/new-app-screen": "0.87.1",
+    "@react-navigation/native": "^7.3.18",
+    "@react-navigation/native-stack": "^7.18.10",
+    "pdf-lib": "^1.17.1",
     "react": "19.2.3",
     "react-native": "0.87.1",
-    "@react-native/new-app-screen": "0.87.1",
-    "react-native-safe-area-context": "^5.5.2"
+    "react-native-blob-util": "^0.24.10",
+    "react-native-document-scanner-plugin": "^2.0.4",
+    "react-native-fs": "^2.20.0",
+    "react-native-google-mobile-ads": "^16.5.0",
+    "react-native-image-picker": "^8.2.1",
+    "react-native-pdf": "^7.0.5",
+    "react-native-quick-base64": "^3.0.1",
+    "react-native-safe-area-context": "^5.9.1",
+    "react-native-screens": "^4.27.0",
+    "react-native-svg": "^15.15.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

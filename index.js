@@ -1,6 +1,5 @@
-/**
- * @format
- */
+import { Buffer } from '@craftzdog/react-native-buffer';
+global.Buffer = global.Buffer || Buffer;
 
 import { AppRegistry } from 'react-native';
 import App from './App';

@@ -1,45 +1,95 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useEffect } from 'react';
+import { StatusBar, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import mobileAds from 'react-native-google-mobile-ads';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import HomeScreen from './src/screens/HomeScreen';
+import ToolScreen from './src/screens/ToolScreen';
+import PagesScreen from './src/screens/PagesScreen';
+import AnnotateScreen from './src/screens/AnnotateScreen';
+import FilesScreen from './src/screens/FilesScreen';
+import DiagnosticsScreen from './src/screens/DiagnosticsScreen';
+import ReaderScreen from './src/screens/ReaderScreen';
+import AdBanner from './src/components/AdBanner';
+import { findTool } from './src/tools/registry';
+import { colors } from './src/theme';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+const Stack = createNativeStackNavigator();
+
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: colors.bg,
+    card: colors.bg,
+    text: colors.text,
+    border: colors.line,
+    primary: colors.accent,
+  },
+};
+
+export default function App() {
+  useEffect(() => {
+    mobileAds().initialize();
+  }, []);
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <StatusBar barStyle="light-content" />
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <NavigationContainer theme={navTheme}>
+          <Stack.Navigator
+            id={undefined}
+            screenOptions={{
+              headerShadowVisible: false,
+              headerTitleStyle: { fontSize: 17 },
+              contentStyle: { backgroundColor: colors.bg },
+            }}
+          >
+            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+            <Stack.Screen
+              name="Tool"
+              component={ToolScreen}
+              options={({ route }: any) => ({
+                title: findTool(route.params.id)?.title ?? 'Tool',
+              })}
+            />
+            <Stack.Screen
+              name="Pages"
+              component={PagesScreen}
+              options={({ route }: any) => ({ title: route.params.title ?? 'Pages' })}
+            />
+            <Stack.Screen
+              name="Annotate"
+              component={AnnotateScreen}
+              options={({ route }: any) => ({ title: route.params.title ?? 'Annotate' })}
+            />
+            <Stack.Screen
+              name="Files"
+              component={FilesScreen}
+              options={{ title: 'Your files' }}
+            />
+            <Stack.Screen
+              name="Reader"
+              component={ReaderScreen}
+              options={({ route }: any) => ({ title: route.params.title ?? 'Reading' })}
+            />
+            <Stack.Screen
+              name="Diagnostics"
+              component={DiagnosticsScreen}
+              options={{ title: 'Self test' }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+
+        {/* Banner sits outside the navigator so it never overlaps a
+            page grid or canvas, and never remounts between screens. */}
+        <SafeAreaView edges={['bottom']} style={{ backgroundColor: colors.adSlot }}>
+          <AdBanner />
+        </SafeAreaView>
+      </View>
     </SafeAreaProvider>
   );
 }
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
-export default App;
