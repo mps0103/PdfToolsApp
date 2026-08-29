@@ -537,7 +537,10 @@ export default function ToolScreen({ route, navigation }: Props) {
             </Pressable>
           )}
           {resultIsFolder ? (
-            <Pressable onPress={() => navigation.navigate('Files')} style={styles.secondary}>
+             <Pressable
+              onPress={() => navigation.navigate('Files', { dir: result.path })}
+              style={styles.secondary}
+            >
               <Text style={[type.body, { fontWeight: '600' }]}>Open in Files</Text>
             </Pressable>
           ) : (
