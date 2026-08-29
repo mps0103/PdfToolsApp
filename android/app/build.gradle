@@ -105,7 +105,12 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
-    packagingOptions { exclude 'META-INF/DEPENDENCIES' }
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+        // Symbol stripping fails on Windows when a scanner holds the .so
+        // files open. Debug builds do not need stripped symbols.
+        doNotStrip '**/*.so'
+    }
 }
 
 dependencies {

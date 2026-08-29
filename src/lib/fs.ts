@@ -88,9 +88,10 @@ const mimeFor = (name: string) => {
 };
 
 /**
- * React Native's own Share only accepts a url on iOS. On Android it sends
- * text alone, which is why WhatsApp reported an empty message and no file
- * ever arrived. react-native-share attaches the file properly.
+ * Shares through our own Kotlin module. React Native's built-in Share only
+ * attaches a url on iOS, and the third-party libraries handed the native
+ * side a null Uri under the new architecture, so the intent is built
+ * directly against the app's FileProvider instead.
  */
 export async function shareFile(path: string) {
   const name = path.split('/').pop() ?? 'document.pdf';
