@@ -79,3 +79,7 @@ android/build
 android/app/build
 android/.gradle
 *.jks
+
+android/app/src/main/assets/index.android.bundle
+android/app/src/main/res/raw/keep.xml
+android/app/src/main/res/drawable-*/node_modules_*
