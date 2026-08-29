@@ -39,9 +39,11 @@ export default function AnnotateScreen({ route, navigation }: Props) {
   const [frames, setFrames] = useState<Record<number, PageFrame> | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageImage, setPageImage] = useState<string | null>(null);
-  const [mode, setMode] = useState<Mode>(signing ? 'ink' : 'ink');
+  const [mode, setMode] = useState<Mode>('ink');
   const [color, setColor] = useState<string>(INK_COLORS.black);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  // Undone marks wait here until a new one is drawn.
+  const [redoStack, setRedoStack] = useState<Annotation[]>([]);
   const [live, setLive] = useState<Point[] | null>(null);
   const [pendingText, setPendingText] = useState<Point | null>(null);
   const [draft, setDraft] = useState('');
@@ -56,6 +58,13 @@ export default function AnnotateScreen({ route, navigation }: Props) {
     liveRef.current = points;
     setLive(points);
   };
+
+  // Drawing anything invalidates the redo history.
+  const addAnnotation = (a: Annotation) => {
+    setAnnotations(list => [...list, a]);
+    setRedoStack([]);
+  };
+
   const pageCount = frames ? Object.keys(frames).length : 0;
   const frame = frames?.[pageIndex];
 
@@ -109,10 +118,13 @@ export default function AnnotateScreen({ route, navigation }: Props) {
 
           if (mode === 'ink') {
             if (points.length < 2) return;
-            setAnnotations(a => [
-              ...a,
-              { kind: 'ink', page: pageIndex, points, color, width: signing ? 2.5 : 2 },
-            ]);
+            addAnnotation({
+              kind: 'ink',
+              page: pageIndex,
+              points,
+              color,
+              width: signing ? 2.5 : 2,
+            });
             return;
           }
 
@@ -125,18 +137,47 @@ export default function AnnotateScreen({ route, navigation }: Props) {
           };
           if (rect.w < 4 || rect.h < 4) return;
 
-          setAnnotations(a => [
-            ...a,
+          addAnnotation(
             mode === 'highlight'
               ? { kind: 'highlight', page: pageIndex, rect, color }
               : { kind: 'whiteout', page: pageIndex, rect },
-          ]);
+          );
         },
       }),
     [mode, color, pageIndex, signing],
   );
 
-  const undo = () => setAnnotations(a => a.slice(0, -1));
+  // Undo removes the last mark ON THIS PAGE. Removing the last mark in the
+  // whole document instead makes undo look broken: it silently edits a page
+  // you are not looking at.
+  const lastOnThisPage = () => {
+    for (let i = annotations.length - 1; i >= 0; i--) {
+      if (annotations[i].page === pageIndex) return i;
+    }
+    return -1;
+  };
+
+  const undoIndex = lastOnThisPage();
+  const canUndo = undoIndex >= 0;
+  const canRedo = redoStack.some(a => a.page === pageIndex);
+
+  const undo = () => {
+    if (undoIndex < 0) return;
+    const removed = annotations[undoIndex];
+    setAnnotations(list => list.filter((_, i) => i !== undoIndex));
+    setRedoStack(stack => [...stack, removed]);
+  };
+
+  const redo = () => {
+    for (let i = redoStack.length - 1; i >= 0; i--) {
+      if (redoStack[i].page === pageIndex) {
+        const restored = redoStack[i];
+        setRedoStack(stack => stack.filter((_, j) => j !== i));
+        setAnnotations(list => [...list, restored]);
+        return;
+      }
+    }
+  };
 
   const save = async () => {
     if (!frames) return;
@@ -167,7 +208,12 @@ export default function AnnotateScreen({ route, navigation }: Props) {
     );
   }
 
-  const onThisPage = annotations.filter(a => a.page === pageIndex);
+  // Keys come from the position in the FULL list, so removing one mark never
+  // makes React reuse another one's rendered element.
+  const onThisPage = annotations
+    .map((a, i) => ({ a, i }))
+    .filter(entry => entry.a.page === pageIndex);
+
   const palette = mode === 'highlight' ? HIGHLIGHT_COLORS : INK_COLORS;
 
   return (
@@ -178,7 +224,11 @@ export default function AnnotateScreen({ route, navigation }: Props) {
           {...responder.panHandlers}
         >
           {pageImage ? (
-            <Image source={{ uri: pageImage }} style={StyleSheet.absoluteFill} resizeMode="stretch" />
+            <Image
+              source={{ uri: pageImage }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="stretch"
+            />
           ) : (
             <View style={[StyleSheet.absoluteFill, styles.center]}>
               <ActivityIndicator color={colors.textDim} />
@@ -186,7 +236,7 @@ export default function AnnotateScreen({ route, navigation }: Props) {
           )}
 
           <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-            {onThisPage.map((a, i) => {
+            {onThisPage.map(({ a, i }) => {
               if (a.kind === 'ink') {
                 return (
                   <Path
@@ -290,8 +340,11 @@ export default function AnnotateScreen({ route, navigation }: Props) {
       )}
 
       <View style={styles.actions}>
-        <Pressable onPress={undo} disabled={!annotations.length} style={styles.secondary}>
-          <Text style={[type.body, !annotations.length && { opacity: 0.35 }]}>Undo</Text>
+        <Pressable onPress={undo} disabled={!canUndo} style={styles.secondary}>
+          <Text style={[type.body, !canUndo && { opacity: 0.35 }]}>Undo</Text>
+        </Pressable>
+        <Pressable onPress={redo} disabled={!canRedo} style={styles.secondary}>
+          <Text style={[type.body, !canRedo && { opacity: 0.35 }]}>Redo</Text>
         </Pressable>
         <Pressable
           onPress={save}
@@ -336,17 +389,14 @@ export default function AnnotateScreen({ route, navigation }: Props) {
               <Pressable
                 onPress={() => {
                   if (draft.trim() && pendingText) {
-                    setAnnotations(a => [
-                      ...a,
-                      {
-                        kind: 'text',
-                        page: pageIndex,
-                        at: pendingText,
-                        value: draft.trim(),
-                        size: 14,
-                        color,
-                      },
-                    ]);
+                    addAnnotation({
+                      kind: 'text',
+                      page: pageIndex,
+                      at: pendingText,
+                      value: draft.trim(),
+                      size: 14,
+                      color,
+                    });
                   }
                   setPendingText(null);
                   setDraft('');
@@ -364,7 +414,15 @@ export default function AnnotateScreen({ route, navigation }: Props) {
 }
 
 const labelFor = (m: Mode, signing: boolean) =>
-  m === 'ink' ? (signing ? 'Sign' : 'Draw') : m === 'whiteout' ? 'Cover' : m === 'text' ? 'Text' : 'Highlight';
+  m === 'ink'
+    ? signing
+      ? 'Sign'
+      : 'Draw'
+    : m === 'whiteout'
+      ? 'Cover'
+      : m === 'text'
+        ? 'Text'
+        : 'Highlight';
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
@@ -398,13 +456,13 @@ const styles = StyleSheet.create({
   swatch: { width: 26, height: 26, borderRadius: 13, borderColor: 'transparent', borderWidth: 2 },
   actions: {
     flexDirection: 'row',
-    gap: space.md,
+    gap: space.sm,
     padding: space.lg,
     backgroundColor: colors.surface,
   },
   secondary: {
     paddingVertical: space.md,
-    paddingHorizontal: space.lg,
+    paddingHorizontal: space.md,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.md,
