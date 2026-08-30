@@ -18,7 +18,8 @@ type Props = { navigation: any };
 // grid alignment is fully determined by this file.
 type Row =
   | { kind: 'heading'; key: string; label: string }
-  | { kind: 'tiles'; key: string; items: (Tool | null)[] };
+  | { kind: 'tiles'; key: string; items: (Tool | null)[] }
+  | { kind: 'about'; key: string };
 
 const TILE_HEIGHT = 88;
 
@@ -61,6 +62,14 @@ export default function HomeScreen({ navigation }: Props) {
         out.push({ kind: 'tiles', key: `r-${found[i].id}`, items });
       }
     }
+
+    // Only when nothing is being searched — About is not a tool and should
+    // not turn up among the results.
+    if (!q) {
+      out.push({ kind: 'heading', key: 'h-app', label: 'APP' });
+      out.push({ kind: 'about', key: 'about' });
+    }
+
     return out;
   }, [query, columns]);
 
@@ -126,6 +135,20 @@ export default function HomeScreen({ navigation }: Props) {
         renderItem={({ item }) =>
           item.kind === 'heading' ? (
             <Text style={styles.heading}>{item.label}</Text>
+          ) : item.kind === 'about' ? (
+            <View style={styles.row}>
+              <Pressable
+                onPress={() => navigation.navigate('About')}
+                style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
+                accessibilityRole="button"
+                accessibilityLabel="About this app"
+              >
+                <Text style={type.tile}>About</Text>
+                <Text style={[type.hint, styles.tileHint]} numberOfLines={2}>
+                  Version, privacy policy and contact
+                </Text>
+              </Pressable>
+            </View>
           ) : (
             <View style={styles.row}>
               {item.items.map((t, i) =>

@@ -16,6 +16,7 @@ import AdBanner from './src/components/AdBanner';
 import Splash from './src/components/Splash';
 import { findTool } from './src/tools/registry';
 import { colors } from './src/theme';
+import AboutScreen from './src/screens/AboutScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -84,6 +85,9 @@ export default function App() {
               component={DiagnosticsScreen}
               options={{ title: 'Self test' }}
             />
+            <Stack.Screen name="About"
+              component={AboutScreen}
+              options={{ title: 'About' }} />
           </Stack.Navigator>
         </NavigationContainer>
 
