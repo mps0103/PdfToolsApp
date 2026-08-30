@@ -15,6 +15,13 @@ function required(): PdfSaveNative {
   return native;
 }
 
+/**
+ * The picker hands back percent-encoded URIs, while Kotlin opens a plain
+ * filesystem path. Without decoding, a file named "my file.pdf" arrives as
+ * "my%20file.pdf" and cannot be found.
+ */
+const cleanPath = (p: string) => decodeURI(p.replace('file://', ''));
+
 const mimeFor = (name: string) => {
   const ext = name.split('.').pop()?.toLowerCase();
   switch (ext) {
@@ -34,7 +41,10 @@ const mimeFor = (name: string) => {
 
 export const PdfSave = {
   toDownloads(path: string) {
-    const name = path.split('/').pop() ?? 'document.pdf';
-    return required().saveToDownloads(path.replace('file://', ''), name, mimeFor(name));
+    const clean = cleanPath(path);
+    // The display name comes from the decoded path, so the file lands in
+    // Downloads as "my file.pdf" rather than "my%20file.pdf".
+    const name = clean.split('/').pop() ?? 'document.pdf';
+    return required().saveToDownloads(clean, name, mimeFor(name));
   },
 };

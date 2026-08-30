@@ -97,7 +97,7 @@ const mimeFor = (name: string) => {
  * directly against the app's FileProvider instead.
  */
 export async function shareFile(path: string) {
-  const name = path.split('/').pop() ?? 'document.pdf';
+  const name = decodeURI(path).split('/').pop() ?? 'document.pdf';
   await PdfShare.file(path, mimeFor(name), 'Share file');
 }
 

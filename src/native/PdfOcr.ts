@@ -18,12 +18,19 @@ function required(): PdfOcrNative {
   return native;
 }
 
+/**
+ * The picker hands back percent-encoded URIs, while Kotlin opens a plain
+ * filesystem path. Without decoding, a file named "my file.pdf" arrives as
+ * "my%20file.pdf" and cannot be found.
+ */
+const cleanPath = (p: string) => decodeURI(p.replace('file://', ''));
+
 // 200 dpi is the sweet spot: ML Kit accuracy plateaus above it and memory
 // use climbs fast on A4 scans.
 export const OCR_DPI = 200;
 
 export const PdfOcr = {
   makeSearchable: (src: string, dest: string, dpi = OCR_DPI) =>
-    required().makeSearchable(src, dest, dpi),
-  readText: (src: string, dpi = OCR_DPI) => required().readText(src, dpi),
+    required().makeSearchable(cleanPath(src), cleanPath(dest), dpi),
+  readText: (src: string, dpi = OCR_DPI) => required().readText(cleanPath(src), dpi),
 };

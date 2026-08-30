@@ -40,6 +40,13 @@ function required(): PdfCompressNative {
 }
 
 /**
+ * The picker hands back percent-encoded URIs, while Kotlin opens a plain
+ * filesystem path. Without decoding, a file named "my file.pdf" arrives as
+ * "my%20file.pdf" and cannot be found.
+ */
+const cleanPath = (p: string) => decodeURI(p.replace('file://', ''));
+
+/**
  * maxEdge caps the longest side of every embedded image in pixels.
  * 1600 still prints acceptably; 1000 is fine for anything read on screen.
  */
@@ -59,12 +66,12 @@ export const SIGNATURE_THRESHOLD_MAX = 245;
 export const PdfCompress = {
   compress: (src: string, dest: string, level: CompressionLevel = 'balanced') => {
     const { quality, maxEdge } = COMPRESSION_LEVELS[level];
-    return required().rewriteImages(src, dest, quality, maxEdge, false);
+    return required().rewriteImages(cleanPath(src), cleanPath(dest), quality, maxEdge, false);
   },
 
   grayscale: (src: string, dest: string) =>
     // Keep resolution, drop colour only.
-    required().rewriteImages(src, dest, 0.8, 0, true),
+    required().rewriteImages(cleanPath(src), cleanPath(dest), 0.8, 0, true),
 
   /**
    * Strips the paper from a photographed signature, leaving transparent ink.
@@ -73,7 +80,7 @@ export const PdfCompress = {
    * survive the cut.
    */
   signature: (src: string, dest: string, threshold = SIGNATURE_THRESHOLD_DEFAULT) =>
-    required().signatureFromImage(src, dest, threshold),
+    required().signatureFromImage(cleanPath(src), cleanPath(dest), threshold),
 };
 
 export const COMPRESS_ERRORS = { MEMORY: 'E_MEMORY', IO: 'E_IO' };

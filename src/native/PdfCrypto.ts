@@ -27,8 +27,15 @@ function required(): PdfCryptoNative {
   return native;
 }
 
+/**
+ * The picker hands back percent-encoded URIs, while Kotlin opens a plain
+ * filesystem path. Without decoding, a file named "my file.pdf" arrives as
+ * "my%20file.pdf" and cannot be found.
+ */
+const cleanPath = (p: string) => decodeURI(p.replace('file://', ''));
+
 export const PdfCrypto = {
-  isEncrypted: (src: string) => required().isEncrypted(src),
+  isEncrypted: (src: string) => required().isEncrypted(cleanPath(src)),
 
   addPassword: (
     src: string,
@@ -37,8 +44,8 @@ export const PdfCrypto = {
     opts?: { ownerPassword?: string; allowPrinting?: boolean; allowCopy?: boolean },
   ) =>
     required().addPassword(
-      src,
-      dest,
+      cleanPath(src),
+      cleanPath(dest),
       userPassword,
       opts?.ownerPassword ?? userPassword,
       opts?.allowPrinting ?? true,
@@ -46,7 +53,7 @@ export const PdfCrypto = {
     ),
 
   removePassword: (src: string, dest: string, password: string) =>
-    required().removePassword(src, dest, password),
+    required().removePassword(cleanPath(src), cleanPath(dest), password),
 };
 
 /** Native error codes, so the UI can say something useful. */

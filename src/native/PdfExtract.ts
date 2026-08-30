@@ -16,7 +16,15 @@ function required(): PdfExtractNative {
   return native;
 }
 
+/**
+ * The picker hands back percent-encoded URIs, while Kotlin opens a plain
+ * filesystem path. Without decoding, a file named "my file.pdf" arrives as
+ * "my%20file.pdf" and cannot be found.
+ */
+const cleanPath = (p: string) => decodeURI(p.replace('file://', ''));
+
 export const PdfExtract = {
-  text: (src: string, dest: string) => required().extractText(src, dest),
-  images: (src: string, destDir: string) => required().extractImages(src, destDir),
+  text: (src: string, dest: string) => required().extractText(cleanPath(src), cleanPath(dest)),
+  images: (src: string, destDir: string) =>
+    required().extractImages(cleanPath(src), cleanPath(destDir)),
 };

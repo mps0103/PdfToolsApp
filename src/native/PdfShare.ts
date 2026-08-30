@@ -6,6 +6,13 @@ type PdfShareNative = {
 
 const native = NativeModules.PdfShare as PdfShareNative | undefined;
 
+/**
+ * The picker hands back percent-encoded URIs, while Kotlin opens a plain
+ * filesystem path. Without decoding, a file named "my file.pdf" arrives as
+ * "my%20file.pdf" and cannot be found.
+ */
+const cleanPath = (p: string) => decodeURI(p.replace('file://', ''));
+
 export const PdfShare = {
   file(path: string, mimeType: string, title = 'Share file') {
     if (!native) {
@@ -13,6 +20,6 @@ export const PdfShare = {
         'PdfShare native module is missing. Rebuild the app after adding the Kotlin module.',
       );
     }
-    return native.shareFile(path, mimeType, title);
+    return native.shareFile(cleanPath(path), mimeType, title);
   },
 };
