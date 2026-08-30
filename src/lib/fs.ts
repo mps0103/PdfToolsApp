@@ -18,25 +18,55 @@ export async function readBase64(uri: string): Promise<string> {
 export async function readBinaryPath(uri: string): Promise<string> {
   return decodeURI(uri.replace('file://', ''));
 }
+/**
+ * The timestamp is minute-precision, so two files made in the same minute
+ * would land on the same name. Add a counter rather than overwrite.
+ */
+async function freePath(name: string): Promise<string> {
+  const base = uniqueName(name);
+  const dot = base.lastIndexOf('.');
+  const stem = dot > 0 ? base.slice(0, dot) : base;
+  const ext = dot > 0 ? base.slice(dot) : '';
+
+  let path = `${OUT_DIR}/${base}`;
+  let n = 2;
+  while (await RNFS.exists(path)) {
+    path = `${OUT_DIR}/${stem}_${n}${ext}`;
+    n++;
+  }
+  return path;
+}
 
 export async function writeOutput(name: string, base64: string): Promise<string> {
   await ensureOutDir();
-  const path = `${OUT_DIR}/${uniqueName(name)}`;
+  const path = await freePath(name);
   await RNFS.writeFile(path, base64, 'base64');
   return path;
 }
 
 export async function copyToOutput(name: string, fromPath: string): Promise<string> {
   await ensureOutDir();
-  const path = `${OUT_DIR}/${uniqueName(name)}`;
+  const path = await freePath(name);
   await RNFS.copyFile(fromPath, path);
   return path;
 }
+/**
+ * Local time, not UTC — a file saved at 4pm should read 1600, whatever the
+ * device's offset. toISOString would shift it.
+ */
+function timestamp() {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(
+    d.getMinutes(),
+  )}`;
+}
 
 function uniqueName(name: string) {
-  const stamp = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
   const dot = name.lastIndexOf('.');
-  return dot > 0 ? `${name.slice(0, dot)}-${stamp}${name.slice(dot)}` : `${name}-${stamp}`;
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : '';
+  return `${stem}_${timestamp()}${ext}`;
 }
 
 export function baseName(name: string) {
