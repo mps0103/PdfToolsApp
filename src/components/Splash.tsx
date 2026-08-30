@@ -16,7 +16,7 @@ export default function Splash({ onDone }: Props) {
     Animated.sequence([
       // Held, not faded in: the image is already on screen when the app
       // starts, so fading it in would look like a stutter.
-      Animated.delay(1700),
+      Animated.delay(1000),
       Animated.timing(out, {
         toValue: 0,
         duration: 320,

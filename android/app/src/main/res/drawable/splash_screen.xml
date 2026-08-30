@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drawn by Android itself the instant the icon is tapped, before React
+     Native has started. Without it the user stares at a blank window for
+     the two or three seconds the JS bundle takes to load.
+
+     centerCrop matches the JS splash's resizeMode="cover", so the handover
+     from this to the React view is invisible. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background"/>
+    <item>
+        <bitmap
+            android:gravity="fill"
+            android:scaleType="centerCrop"
+            android:src="@drawable/splash_logo"/>
+    </item>
+</layer-list>
