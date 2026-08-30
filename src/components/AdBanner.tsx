@@ -14,7 +14,7 @@ import { colors, AD_SLOT_HEIGHT } from '../theme';
 const UNIT_ID = __DEV__
   ? TestIds.ADAPTIVE_BANNER
   : Platform.select({
-      android: 'ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY',
+      android: 'ca-app-pub-2904788540387890/4809177342',
       default: '',
     })!;
 
