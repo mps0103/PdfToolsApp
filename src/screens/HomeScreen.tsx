@@ -1,21 +1,45 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { CATEGORIES, TOOLS, Tool } from '../tools/registry';
 import { colors, radius, space, type } from '../theme';
 
 type Props = { navigation: any };
 
 // One flat list of rows, built here rather than by nesting a FlatList inside
-// a SectionList. Every row is either a heading or a pair of tiles, so the
+// a SectionList. Every row is either a heading or a group of tiles, so the
 // grid alignment is fully determined by this file.
 type Row =
   | { kind: 'heading'; key: string; label: string }
-  | { kind: 'pair'; key: string; left: Tool; right: Tool | null };
+  | { kind: 'tiles'; key: string; items: (Tool | null)[] };
 
 const TILE_HEIGHT = 88;
 
+/**
+ * Two columns on phones, more as the screen grows. The thresholds keep the
+ * tile between roughly 140 and 240px at every common size, so the text never
+ * cramps on a small phone or stretches absurdly on a tablet in landscape.
+ */
+const columnsFor = (width: number) => {
+  if (width >= 1000) return 5;
+  if (width >= 800) return 4;
+  if (width >= 600) return 3;
+  return 2;
+};
+
 export default function HomeScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
+  // useWindowDimensions, not Dimensions.get, so rotating the device relays
+  // the grid instead of keeping the launch-time column count.
+  const { width } = useWindowDimensions();
+  const columns = columnsFor(width);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -28,17 +52,17 @@ export default function HomeScreen({ navigation }: Props) {
       if (!found.length) continue;
 
       out.push({ kind: 'heading', key: `h-${category}`, label: category.toUpperCase() });
-      for (let i = 0; i < found.length; i += 2) {
-        out.push({
-          kind: 'pair',
-          key: `r-${found[i].id}`,
-          left: found[i],
-          right: found[i + 1] ?? null,
-        });
+
+      for (let i = 0; i < found.length; i += columns) {
+        const items: (Tool | null)[] = found.slice(i, i + columns);
+        // Pad the last row so its tiles keep the same width as every other
+        // row rather than stretching to fill.
+        while (items.length < columns) items.push(null);
+        out.push({ kind: 'tiles', key: `r-${found[i].id}`, items });
       }
     }
     return out;
-  }, [query]);
+  }, [query, columns]);
 
   const open = (tool: Tool) => navigation.navigate('Tool', { id: tool.id });
 
@@ -70,7 +94,7 @@ export default function HomeScreen({ navigation }: Props) {
             <View style={styles.header}>
               <View style={{ flex: 1 }}>
                 <Text style={type.title}>PDF Tools</Text>
-                <Text style={[type.hint, { marginTop: space.xs }]}> 
+                <Text style={[type.hint, { marginTop: space.xs }]}>
                   Everything runs on this phone. Nothing is uploaded.
                 </Text>
               </View>
@@ -94,7 +118,7 @@ export default function HomeScreen({ navigation }: Props) {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={type.body}>No tool matches that search.</Text>
-            <Text style={[type.hint, { marginTop: space.sm }]}> 
+            <Text style={[type.hint, { marginTop: space.sm }]}>
               Try merge, password or image.
             </Text>
           </View>
@@ -104,8 +128,13 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.heading}>{item.label}</Text>
           ) : (
             <View style={styles.row}>
-              {tile(item.left)}
-              {item.right ? tile(item.right) : <View style={styles.tileGhost} />}
+              {item.items.map((t, i) =>
+                t ? (
+                  <React.Fragment key={t.id}>{tile(t)}</React.Fragment>
+                ) : (
+                  <View key={`ghost-${i}`} style={styles.tileGhost} />
+                ),
+              )}
             </View>
           )
         }
@@ -166,7 +195,8 @@ const styles = StyleSheet.create({
     padding: space.md,
     justifyContent: 'center',
   },
-  // Fills the empty half of an odd row so the last tile keeps its width.
+  // Fills the empty slots of a short last row so its tiles keep the same
+  // width as every other row.
   tileGhost: { flex: 1, height: TILE_HEIGHT },
   tilePressed: { backgroundColor: colors.surfaceAlt, borderColor: colors.accent },
   tileHint: { marginTop: space.xs },
