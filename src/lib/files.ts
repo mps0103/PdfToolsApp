@@ -1,3 +1,4 @@
+import { Linking } from 'react-native';
 import {
   pick,
   types,
@@ -72,3 +73,53 @@ export const formatSize = (bytes?: number | null) => {
   const mb = bytes / (1024 * 1024);
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 };
+
+/* ---------------------------------------------------------------------- */
+/* Files opened from outside the app                                      */
+/* ---------------------------------------------------------------------- */
+
+/**
+ * Pulls a readable filename out of a content:// URI. Android usually ends
+ * these with the display name, but not always, so there is a fallback.
+ */
+function nameFromUri(uri: string): string {
+  try {
+    const tail = decodeURIComponent(uri).split('/').pop() ?? '';
+    if (tail.toLowerCase().endsWith('.pdf')) return tail;
+  } catch {
+    // Malformed encoding — fall through to the default.
+  }
+  return `document-${Date.now()}.pdf`;
+}
+
+/**
+ * Takes the URI Android hands over when a PDF is opened with this app and
+ * copies it into the cache. The permission granted on that URI lasts only
+ * as long as the launching intent, so anything that reads the file later
+ * needs its own copy.
+ */
+export async function importIncoming(uri: string): Promise<PickedFile | null> {
+  if (!uri) return null;
+
+  const name = nameFromUri(uri);
+  try {
+    const [copied] = await localise([{ uri, name, type: 'application/pdf', size: null }]);
+    return copied ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The URI the app was launched with, or null for a normal launch from the
+ * icon. Only PDFs are accepted; anything else is ignored rather than
+ * failing later in the reader.
+ */
+export async function launchUri(): Promise<string | null> {
+  try {
+    const url = await Linking.getInitialURL();
+    return url && /^(content|file):/i.test(url) ? url : null;
+  } catch {
+    return null;
+  }
+}
