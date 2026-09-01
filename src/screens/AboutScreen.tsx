@@ -4,7 +4,7 @@ import { colors, radius, space, type } from '../theme';
 
 // Keep in step with versionName in android/app/build.gradle.
 export const APP_VERSION = '1.0';
-const PRIVACY_URL = 'https://mps0103.github.io/PdfToolsApp/';
+const PRIVACY_URL = 'https://mps0103.github.io/PdfToolsApp/privacy';
 const CONTACT_EMAIL = 'info@dealtrix.com';
 
 export default function AboutScreen() {
