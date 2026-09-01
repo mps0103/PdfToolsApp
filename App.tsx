@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Linking, StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -18,6 +18,7 @@ import DiagnosticsScreen from './src/screens/DiagnosticsScreen';
 import ReaderScreen from './src/screens/ReaderScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import AdBanner from './src/components/AdBanner';
+import Splash from './src/components/Splash';
 import { importIncoming, launchUri } from './src/lib/files';
 import { findTool } from './src/tools/registry';
 import { colors } from './src/theme';
@@ -82,6 +83,8 @@ export default function App() {
     };
   }, []);
 
+  const [splashDone, setSplashDone] = useState(false);
+
   // The splash is drawn natively by Android from the moment the icon is
   // tapped, so there is no JS splash here. A second one on top only added a
   // flicker at the handover.
@@ -144,6 +147,8 @@ export default function App() {
         <SafeAreaView edges={['bottom']} style={{ backgroundColor: colors.adSlot }}>
           <AdBanner />
         </SafeAreaView>
+        {/* Splash overlays everything until it finishes */}
+        {!splashDone && <Splash onDone={() => setSplashDone(true)} />}
       </SafeAreaView>
     </SafeAreaProvider>
   );

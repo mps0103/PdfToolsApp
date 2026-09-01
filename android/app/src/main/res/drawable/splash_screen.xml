@@ -3,14 +3,13 @@
      Native has started. Without it the user stares at a blank window for
      the two or three seconds the JS bundle takes to load.
 
-     centerCrop matches the JS splash's resizeMode="cover", so the handover
-     from this to the React view is invisible. -->
+     fill matches the JS splash, which sizes the image to the full screen,
+     so the handover from this to the React view doesn't jump. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/splash_background"/>
     <item>
         <bitmap
             android:gravity="fill"
-            android:scaleType="centerCrop"
             android:src="@drawable/splash_logo"/>
     </item>
 </layer-list>
