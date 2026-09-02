@@ -42,6 +42,10 @@ type Props = { route: any; navigation: any };
 
 const CANVAS_WIDTH = Math.min(Dimensions.get('window').width - space.lg * 2, 520);
 
+// Leaves room for the pager, tool row, colour swatches, action bar and
+// the ad slot below the canvas.
+const MAX_CANVAS_HEIGHT = Dimensions.get('window').height * 0.52;
+
 // Thresholds the user can step through when the paper was not white enough.
 const THRESHOLDS = [160, 180, 200, 220, 240];
 
@@ -140,9 +144,14 @@ export default function AnnotateScreen({ route, navigation }: Props) {
       );
   }, [frames, pageIndex, file.uri]);
 
-  const canvasHeight = frame
+  // Capped to what actually fits. Without a ceiling a portrait page renders
+  // taller than the space available and slides under the pager and toolbar,
+  // hiding both the page controls and the bottom of the page itself.
+  const naturalHeight = frame
     ? (frame.heightPt / frame.widthPt) * CANVAS_WIDTH
     : CANVAS_WIDTH * 1.414;
+
+  const canvasHeight = Math.min(naturalHeight, MAX_CANVAS_HEIGHT);
 
   const responder = useMemo(
     () =>
@@ -954,6 +963,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: space.lg,
     paddingVertical: space.sm,
+    backgroundColor: colors.surface,
   },
   tools: {
     flexDirection: 'row',
