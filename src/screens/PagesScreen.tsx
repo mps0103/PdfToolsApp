@@ -73,10 +73,12 @@ export default function PagesScreen({ route, navigation }: Props) {
     setSelected(to);
   };
 
-  const rotateSelected = () => {
+  // Turns accumulate, so tapping 90 twice is the same as tapping 180 once.
+  // Wrapping at 360 keeps the stored value in the range pdf-lib expects.
+  const rotateSelected = (turns: 90 | 180) => {
     if (selected === null) return;
     const original = order[selected];
-    setRotation(r => ({ ...r, [original]: ((r[original] ?? 0) + 90) % 360 }));
+    setRotation(r => ({ ...r, [original]: ((r[original] ?? 0) + turns) % 360 }));
   };
 
   const removeSelected = () => {
@@ -146,7 +148,18 @@ export default function PagesScreen({ route, navigation }: Props) {
           </>
         )}
         {mode === 'rotate' && (
-          <Action label="Rotate 90°" onPress={rotateSelected} disabled={selected === null} />
+          <>
+            <Action
+              label="Rotate 90°"
+              onPress={() => rotateSelected(90)}
+              disabled={selected === null}
+            />
+            <Action
+              label="Rotate 180°"
+              onPress={() => rotateSelected(180)}
+              disabled={selected === null}
+            />
+          </>
         )}
         {mode === 'delete' && (
           <Action

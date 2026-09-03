@@ -3,7 +3,7 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 import { colors, radius, space, type } from '../theme';
 
 // Keep in step with versionName in android/app/build.gradle.
-export const APP_VERSION = '1.0';
+export const APP_VERSION = '1.1';
 const PRIVACY_URL = 'https://mps0103.github.io/PdfToolsApp/privacy';
 const CONTACT_EMAIL = 'info@dealtrix.com';
 

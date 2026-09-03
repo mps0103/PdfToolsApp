@@ -32,7 +32,7 @@ export const TOOLS: Tool[] = [
   { id: 'extract-pages', title: 'Extract pages', hint: 'Keep only the pages you pick', category: 'Organize', input: 'pdf', ready: true },
   { id: 'delete-pages', title: 'Delete pages', hint: 'Remove pages you do not need', category: 'Organize', input: 'pdf', ready: true },
   { id: 'organize', title: 'Reorder pages', hint: 'Drag pages into a new order', category: 'Organize', input: 'pdf', ready: true },
-  { id: 'rotate', title: 'Rotate', hint: 'Turn pages 90, 180 or 270', category: 'Organize', input: 'pdf', ready: true },
+  { id: 'rotate', title: 'Rotate', hint: 'Turn pages 90 or 180', category: 'Organize', input: 'pdf', ready: true },
   { id: 'flip', title: 'Flip', hint: 'Mirror pages horizontally or vertically', category: 'Organize', input: 'pdf', ready: true },
   { id: 'split-half', title: 'Split in half', hint: 'Two-page scans into single pages', category: 'Organize', input: 'pdf', ready: true },
   { id: 'n-up', title: 'N-up', hint: 'Print 2 or 4 pages per sheet', category: 'Organize', input: 'pdf', ready: true },

@@ -261,21 +261,7 @@ export default function ToolScreen({ route, navigation }: Props) {
         </Field>
       )}
 
-      {fields.includes('turns') && (
-        <Field label="Turn by">
-          <View style={{ flexDirection: 'row', gap: space.sm }}>
-            {([90, 180, 270] as const).map(t => (
-              <Pressable
-                key={t}
-                onPress={() => set('turns', t)}
-                style={[styles.chip, (opts.turns ?? 90) === t && styles.chipOn]}
-              >
-                <Text style={type.body}>{t}°</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Field>
-      )}
+      
 
       {fields.includes('dpi') && (
         <Field label="Quality">
