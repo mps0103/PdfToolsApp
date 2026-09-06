@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   Alert,
   FlatList,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { findTool } from '../tools/registry';
 import { pickFor, formatSize, PickedFile } from '../lib/files';
+import { listRecent, addRecent, removeRecent, RecentFile } from '../lib/recent';
 import { scanDocument } from '../lib/scanner';
 import { renameFile, shareFile } from '../lib/fs';
 import ImageCropPicker from 'react-native-image-crop-picker';
@@ -29,6 +30,7 @@ import { CRYPTO_ERRORS, PdfCrypto } from '../native/PdfCrypto';
 import { COMPRESSION_LEVELS, CompressionLevel } from '../native/PdfCompress';
 import { PAGE_SIZES, PageSizeKey } from '../workers/pdfLibExtra';
 import { colors, radius, space, type } from '../theme';
+import { useFocusEffect } from '@react-navigation/native';
 
 type Props = { route: any; navigation: any };
 
@@ -49,9 +51,39 @@ export default function ToolScreen({ route, navigation }: Props) {
   const fields = useMemo(() => optionsFor(tool.id), [tool.id]);
 
   const [files, setFiles] = useState<PickedFile[]>([]);
+  const [recent, setRecent] = useState<RecentFile[]>([]);
   const [opts, setOpts] = useState<ToolOptions>({ allowPrinting: true, allowCopy: false });
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ path: string; note?: string } | null>(null);
+
+  const refreshRecent = useCallback(() => {
+    if (tool.input !== 'pdf') return;
+    listRecent().then(setRecent).catch(() => setRecent([]));
+  }, [tool.input]);
+
+  useEffect(() => {
+    refreshRecent();
+  }, [refreshRecent]);
+
+  // For tools that navigate away (Reader, Annotate, Pages), this screen
+  // never unmounts. Without this, `files` stays populated with the file
+  // that was just used, leaving a static row with no way to reopen it and
+  // hiding the Recent strip behind it. Clearing on focus returns the
+  // screen to its normal empty state — drop zone plus Recent strip, with
+  // the just-used file first since addRecent already puts it there.
+  useFocusEffect(
+    useCallback(() => {
+      if (
+        READER_TOOLS.includes(tool.id) ||
+        CANVAS_TOOLS.includes(tool.id) ||
+        VISUAL_TOOLS.includes(tool.id)
+      ) {
+        setFiles([]);
+        setResult(null);
+        refreshRecent();
+      }
+    }, [tool.id])
+  );
 
   // Some tools write a folder of images rather than one file.
   const resultIsFolder = !!result && !/\.[a-z0-9]{2,4}$/i.test(result.path);
@@ -122,46 +154,66 @@ export default function ToolScreen({ route, navigation }: Props) {
 
   
 
+  const useFile = async (picked: PickedFile[]) => {
+    setResult(null);
+    setFiles(prev => (tool.input === 'pdf' ? picked : [...prev, ...picked]));
+
+    if (READER_TOOLS.includes(tool.id)) {
+      navigation.navigate('Reader', { file: picked[0], title: picked[0].name });
+      return;
+    }
+
+    if (CANVAS_TOOLS.includes(tool.id)) {
+      navigation.navigate('Annotate', {
+        file: picked[0],
+        title: tool.title,
+        signing: tool.id === 'sign',
+      });
+      return;
+    }
+
+    if (VISUAL_TOOLS.includes(tool.id)) {
+      navigation.navigate('Pages', {
+        file: picked[0],
+        title: tool.title,
+        mode: tool.id === 'rotate' ? 'rotate' : tool.id === 'delete-pages' ? 'delete' : 'organize',
+      });
+      return;
+    }
+
+    if (tool.id === 'unlock') {
+      const locked = await PdfCrypto.isEncrypted(picked[0].uri).catch(() => true);
+      if (!locked) Alert.alert('No password on this file', 'It already opens without one.');
+    }
+  };
+
   const choose = async () => {
     try {
       const picked = tool.id === 'scan' ? await scanDocument() : await pickFor(tool.input);
       if (!picked.length) return;
-      setResult(null);
-      setFiles(prev => (tool.input === 'pdf' ? picked : [...prev, ...picked]));
-
-      if (READER_TOOLS.includes(tool.id)) {
-        navigation.navigate('Reader', { file: picked[0], title: picked[0].name });
-        return;
-      }
-
-      if (CANVAS_TOOLS.includes(tool.id)) {
-        navigation.navigate('Annotate', {
-          file: picked[0],
-          title: tool.title,
-          signing: tool.id === 'sign',
-        });
-        return;
-      }
-
-      if (VISUAL_TOOLS.includes(tool.id)) {
-        navigation.navigate('Pages', {
-          file: picked[0],
-          title: tool.title,
-          mode:
-            tool.id === 'rotate' ? 'rotate' : tool.id === 'delete-pages' ? 'delete' : 'organize',
-        });
-        return;
-      }
-
-      if (tool.id === 'unlock') {
-        const locked = await PdfCrypto.isEncrypted(picked[0].uri).catch(() => true);
-        if (!locked) Alert.alert('No password on this file', 'It already opens without one.');
+      await useFile(picked);
+      if (tool.input === 'pdf') {
+        addRecent({
+          uri: picked[0].uri,
+          name: picked[0].name,
+          size: picked[0].size ?? null,
+          openedAt: Date.now(),
+        }).catch(() => {});
+        refreshRecent();
       }
     } catch (e: any) {
       if (e?.code !== 'OPERATION_CANCELED') {
         Alert.alert('Could not open that file', 'Pick it again from a different folder.');
       }
     }
+  };
+
+  const openRecent = async (entry: RecentFile) => {
+    await useFile([{ uri: entry.uri, name: entry.name, size: entry.size, type: 'application/pdf' }]);
+    // Reopening from the strip counts as use too, so it moves back to the
+    // top next time the strip is shown — same as a freshly picked file.
+    addRecent({ ...entry, openedAt: Date.now() }).catch(() => {});
+    refreshRecent();
   };
 
   const run = async () => {
@@ -209,6 +261,32 @@ export default function ToolScreen({ route, navigation }: Props) {
           Files stay on this phone. Nothing is uploaded.
         </Text>
       </Pressable>
+
+      {tool.input === 'pdf' && files.length === 0 && recent.length > 0 && (
+        <>
+          <Text style={[type.section, { marginTop: space.md }]}>RECENT</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingVertical: space.sm }}>
+            <View style={{ flexDirection: 'row', gap: space.sm, paddingHorizontal: space.md }}>
+              {recent.slice(0, 5).map(r => (
+                <View key={r.uri} style={[styles.chip, { flexDirection: 'row', alignItems: 'center' }]}>
+                  <Pressable onPress={() => openRecent(r)} style={{ maxWidth: 160 }}>
+                    <Text numberOfLines={1} style={type.body}>
+                      {r.name}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => removeRecent(r.uri).then(() => refreshRecent()).catch(() => {})}
+                    hitSlop={8}
+                    style={{ marginLeft: space.xs }}
+                  >
+                    <Text style={{ color: colors.textDim }}>×</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </>
+      )}
 
       <FlatList
         data={files}

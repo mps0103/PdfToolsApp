@@ -58,6 +58,7 @@ class PdfExtractModule(reactContext: ReactApplicationContext) :
             var index = 0
 
             PDDocument.load(File(clean(srcPath))).use { doc ->
+                val seen = HashSet<Int>()
                 for ((pageNo, page) in doc.pages.withIndex()) {
                     val resources = page.resources ?: continue
                     for (name in resources.xObjectNames.toList()) {
@@ -68,18 +69,22 @@ class PdfExtractModule(reactContext: ReactApplicationContext) :
                         } ?: continue
 
                         if (xObject !is PDImageXObject) continue
+                        if (!seen.add(System.identityHashCode(xObject))) continue
+
                         val bitmap: Bitmap = try {
                             xObject.image
                         } catch (e: Exception) {
                             continue
                         } ?: continue
 
+                        if (bitmap.isRecycled) continue
+
                         index++
                         val file = File(dir, "$stem-p${pageNo + 1}-$index.png")
                         FileOutputStream(file).use {
                             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
                         }
-                        bitmap.recycle()
+                        if (!bitmap.isRecycled) bitmap.recycle()
                         out.pushString("file://${file.absolutePath}")
                     }
                 }
