@@ -18,7 +18,7 @@ class MainActivity : ReactActivity() {
    * window has been laid out, by which time the JS splash is taking over.
    */
   override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
+    super.onCreate(null)
     window.decorView.post { setTheme(R.style.AppTheme) }
   }
 
