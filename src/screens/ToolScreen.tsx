@@ -94,19 +94,28 @@ export default function ToolScreen({ route, navigation }: Props) {
     refreshRecent();
   }, [refreshRecent]);
 
-  // A single scrollToEnd snaps at a fixed, fairly fast built-in speed
-  // with no way to slow it down. Scrolling most of the way first, then
-  // finishing after a short pause, reads as a slower, more deliberate
-  // motion instead of a snap.
   useEffect(() => {
     if (!result) return;
-    requestAnimationFrame(() => {
-      const target = Math.max(contentHeight.current - 400, 0);
-      scrollRef.current?.scrollTo({ y: target, animated: true });
-      setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }, 350);
-    });
+
+    const settle = setTimeout(() => {
+      requestAnimationFrame(() => {
+        const endY = Math.max(contentHeight.current, 0);
+        const anim = new Animated.Value(0);
+        const listenerId = anim.addListener(({ value }) => {
+          scrollRef.current?.scrollTo({ y: value, animated: false });
+        });
+        Animated.timing(anim, {
+          toValue: endY,
+          duration: 2500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }).start(() => {
+          anim.removeListener(listenerId);
+        });
+      });
+    }, 120); // lets the result card's own layout settle before measuring/scrolling
+
+    return () => clearTimeout(settle);
   }, [result]);
 
   // For tools that navigate away (Reader, Annotate, Pages), this screen
