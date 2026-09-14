@@ -1,6 +1,8 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import {
   Alert,
+  Animated,
+  Easing,
   FlatList,
   Modal,
   Pressable,
@@ -56,6 +58,33 @@ export default function ToolScreen({ route, navigation }: Props) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ path: string; note?: string } | null>(null);
 
+  // Ripple pulsing outward from center while a tool runs. Built from
+  // scale + opacity so it can use the native driver — the actual PDF
+  // processing runs synchronously on the JS thread and blocks it, so a
+  // JS-driven animation (like the previous width-based fill) freezes
+  // mid-task. Native-driven transforms keep animating regardless.
+  const ripple = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const contentHeight = useRef(0);
+  const [ctaSize, setCtaSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!busy) {
+      ripple.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.timing(ripple, {
+        toValue: 1,
+        duration: 1100,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [busy, ripple]);
+
   const refreshRecent = useCallback(() => {
     if (tool.input !== 'pdf') return;
     listRecent().then(setRecent).catch(() => setRecent([]));
@@ -64,6 +93,21 @@ export default function ToolScreen({ route, navigation }: Props) {
   useEffect(() => {
     refreshRecent();
   }, [refreshRecent]);
+
+  // A single scrollToEnd snaps at a fixed, fairly fast built-in speed
+  // with no way to slow it down. Scrolling most of the way first, then
+  // finishing after a short pause, reads as a slower, more deliberate
+  // motion instead of a snap.
+  useEffect(() => {
+    if (!result) return;
+    requestAnimationFrame(() => {
+      const target = Math.max(contentHeight.current - 400, 0);
+      scrollRef.current?.scrollTo({ y: target, animated: true });
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 350);
+    });
+  }, [result]);
 
   // For tools that navigate away (Reader, Annotate, Pages), this screen
   // never unmounts. Without this, `files` stays populated with the file
@@ -243,7 +287,14 @@ export default function ToolScreen({ route, navigation }: Props) {
           : 'Choose PDF';
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={{ padding: space.lg }}>
+    <ScrollView
+      ref={scrollRef}
+      style={styles.root}
+      contentContainerStyle={{ padding: space.lg }}
+      onContentSizeChange={(_, height) => {
+        contentHeight.current = height;
+      }}
+    >
       <Text style={type.hint}>{tool.hint}</Text>
 
       {!runner && !navigates && (
@@ -555,9 +606,43 @@ export default function ToolScreen({ route, navigation }: Props) {
 
       <Pressable
         onPress={run}
+        onLayout={e => {
+          const { width, height } = e.nativeEvent.layout;
+          setCtaSize({ width, height });
+        }}
         disabled={files.length === 0 || busy}
-        style={[styles.cta, (files.length === 0 || busy) && styles.ctaOff]}
+        style={[styles.cta, (files.length === 0 || busy) && styles.ctaOff, styles.ctaClip]}
       >
+        {busy && ctaSize.width > 0 && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.ctaRipple,
+              {
+                left: ctaSize.width / 2 - 12,
+                top: ctaSize.height / 2 - 12,
+                opacity: ripple.interpolate({
+                  inputRange: [0, 0.6, 1],
+                  outputRange: [0.5, 0.25, 0],
+                }),
+                transform: [
+                  {
+                    scale: ripple.interpolate({
+                      inputRange: [0, 1],
+                      // Diagonal of the button divided by the dot's own
+                      // diameter (24), so the ripple's edge reaches every
+                      // corner of the button exactly, regardless of its size.
+                      outputRange: [
+                        0,
+                        Math.sqrt(ctaSize.width ** 2 + ctaSize.height ** 2) / 24,
+                      ],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
+        )}
         <Text style={styles.ctaText}>{busy ? 'Working…' : tool.title}</Text>
       </Pressable>
 
@@ -751,6 +836,16 @@ const styles = StyleSheet.create({
   },
   ctaOff: { backgroundColor: colors.surfaceAlt },
   ctaText: { color: '#0B1020', fontSize: 16, fontWeight: '700' },
+  ctaClip: {
+    overflow: 'hidden',
+  },
+  ctaRipple: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.text,
+  },
   result: {
     marginTop: space.lg,
     padding: space.lg,
