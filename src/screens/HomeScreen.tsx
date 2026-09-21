@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { CATEGORIES, TOOLS, Tool } from '../tools/registry';
+import ToolIcon from '../components/ToolIcon';
 import { colors, radius, space, type } from '../theme';
 
 type Props = { navigation: any };
@@ -82,12 +83,15 @@ export default function HomeScreen({ navigation }: Props) {
       accessibilityRole="button"
       accessibilityLabel={tool.title}
     >
-      <Text style={type.tile} numberOfLines={1}>
+      <Text style={[type.tile, styles.tileTitle]} numberOfLines={1}>
         {tool.title}
       </Text>
       <Text style={[type.hint, styles.tileHint]} numberOfLines={2}>
         {tool.hint}
       </Text>
+      <View style={styles.tileIcon} pointerEvents="none">
+        <ToolIcon id={tool.id} />
+      </View>
     </Pressable>
   );
 
@@ -143,10 +147,15 @@ export default function HomeScreen({ navigation }: Props) {
                 accessibilityRole="button"
                 accessibilityLabel="About this app"
               >
-                <Text style={type.tile}>About</Text>
+                <Text style={[type.tile, styles.tileTitle]} numberOfLines={1}>
+                  About
+                </Text>
                 <Text style={[type.hint, styles.tileHint]} numberOfLines={2}>
                   Version, privacy policy and contact
                 </Text>
+                <View style={styles.tileIcon} pointerEvents="none">
+                  <ToolIcon id="about" />
+                </View>
               </Pressable>
             </View>
           ) : (
@@ -217,7 +226,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: space.md,
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  // The glyph is pinned to the corner rather than laid out in a row, so it
+  // costs the hint no width -- only the title, which sits beside it, keeps
+  // clear of it.
+  tileIcon: { position: 'absolute', top: space.md, right: space.sm },
+  tileTitle: { paddingRight: 18 },
   // Fills the empty slots of a short last row so its tiles keep the same
   // width as every other row.
   tileGhost: { flex: 1, height: TILE_HEIGHT },
