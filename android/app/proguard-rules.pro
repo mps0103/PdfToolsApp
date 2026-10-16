@@ -22,3 +22,26 @@
 # React Native, Hermes, ML Kit and Mobile Ads all ship their own consumer
 # rules inside their AARs, which R8 applies automatically. Blanket -keep rules
 # for them were removed: they only stopped R8 shrinking those libraries.
+
+# ---------------------------------------------------------------------------
+# Why minification is currently off (enableProguardInReleaseBuilds in
+# build.gradle).
+#
+# 1.7 shipped with R8 on and every launch died before reaching any of this
+# app's code:
+#
+#   Unable to get provider androidx.startup.InitializationProvider:
+#     Failed to create an instance of androidx.work.impl.WorkDatabase
+#
+# WorkManager comes in under Google Mobile Ads and keeps its queue in a Room
+# database. Room loads the generated *_Impl classes by name, so R8 sees no
+# reference to them and removed RawWorkInfoDao_Impl and PreferenceDao_Impl.
+#
+# The rules below fix that specific crash. They are kept here, unused, for
+# whenever R8 is turned back on — which should happen only with a release
+# build actually run on a device first, since this class of failure cannot be
+# seen in a debug build or at compile time.
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
+-keep class **_Impl { *; }
+-keep class androidx.work.impl.** { *; }
+-dontwarn androidx.work.**

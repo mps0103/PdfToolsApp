@@ -10,7 +10,7 @@ import {
 } from '../theme';
 
 // Keep in step with versionName in android/app/build.gradle.
-export const APP_VERSION = '1.7';
+export const APP_VERSION = '1.8';
 const PRIVACY_URL = 'https://mps0103.github.io/PdfToolsApp/privacy';
 const CONTACT_EMAIL = 'info@dealtrix.com';
 
