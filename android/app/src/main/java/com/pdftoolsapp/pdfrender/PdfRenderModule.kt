@@ -50,6 +50,19 @@ class PdfRenderModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun renderPage(srcPath: String, pageIndex: Int, targetWidth: Int, promise: Promise) {
         try {
+            // The cache name already carries the page and the width, so an
+            // identical request is answered from disk rather than building
+            // the bitmap a second time. Scrolling a page list back over
+            // ground it has already covered then costs nothing.
+            val cached = File(
+                reactContext.cacheDir,
+                "page-${File(clean(srcPath)).nameWithoutExtension}-$pageIndex-$targetWidth.png"
+            )
+            if (cached.isFile && cached.length() > 0L) {
+                promise.resolve("file://${cached.absolutePath}")
+                return
+            }
+
             val (fd, renderer) = openRenderer(srcPath)
             if (pageIndex < 0 || pageIndex >= renderer.pageCount) {
                 renderer.close(); fd.close()
@@ -68,10 +81,7 @@ class PdfRenderModule(private val reactContext: ReactApplicationContext) :
             renderer.close()
             fd.close()
 
-            val outFile = File(
-                reactContext.cacheDir,
-                "page-${File(clean(srcPath)).nameWithoutExtension}-$pageIndex-$targetWidth.png"
-            )
+            val outFile = cached
             FileOutputStream(outFile).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
             bitmap.recycle()
 

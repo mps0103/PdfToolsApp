@@ -250,7 +250,13 @@ export default function FilesScreen({ navigation, route }: any) {
               <View style={styles.cardTop}>
                 {item.isDir && <Text style={styles.folderGlyph}>▸</Text>}
                 {isImage(item.name) && (
-                  <Image source={{ uri: fileUri(item.path) }} style={styles.thumb} />
+                  <Image
+                    source={{ uri: fileUri(item.path) }}
+                    style={styles.thumb}
+                    // A saved page can be several thousand pixels wide; this
+                    // row shows it at thumbnail size.
+                    resizeMethod="resize"
+                  />
                 )}
                 <View style={{ flex: 1 }}>
                   <Text style={type.body} numberOfLines={1}>

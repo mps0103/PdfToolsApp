@@ -13,8 +13,7 @@
       android:allowBackup="false"
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
-      android:supportsRtl="true"
-      android:largeHeap="true">
+      android:supportsRtl="true">
       <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-2904788540387890~8560720096"/>
       <provider
         android:name="androidx.core.content.FileProvider"

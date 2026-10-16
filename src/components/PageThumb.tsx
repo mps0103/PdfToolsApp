@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { PdfRender } from '../native/PdfRender';
+import { useInBackground } from '../lib/memory';
 import { colors, radius, type } from '../theme';
 
 type Props = { src: string; pageIndex: number; width?: number };
@@ -8,6 +9,9 @@ type Props = { src: string; pageIndex: number; width?: number };
 export default function PageThumb({ src, pageIndex, width = 220 }: Props) {
   const [uri, setUri] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  // The render is already a file in the cache, so dropping the Image while
+  // the app is away costs a re-decode on return and nothing else.
+  const hidden = useInBackground();
 
   useEffect(() => {
     let alive = true;
@@ -35,7 +39,17 @@ export default function PageThumb({ src, pageIndex, width = 220 }: Props) {
     );
   }
 
-  return <Image source={{ uri }} style={styles.box} resizeMode="contain" />;
+  if (hidden) return <View style={styles.box} />;
+
+  return (
+    <Image
+      source={{ uri }}
+      style={styles.box}
+      resizeMode="contain"
+      // Decode to the size actually drawn rather than the size on disk.
+      resizeMethod="resize"
+    />
+  );
 }
 
 const styles = StyleSheet.create({

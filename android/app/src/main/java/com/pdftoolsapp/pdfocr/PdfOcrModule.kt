@@ -23,6 +23,8 @@ import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory
 import com.tom_roush.pdfbox.pdmodel.graphics.state.RenderingMode
 import java.io.File
 
+private const val OCR_MAX_EDGE = 2500f
+
 class PdfOcrModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
@@ -61,7 +63,7 @@ class PdfOcrModule(private val reactContext: ReactApplicationContext) :
 
                 for (i in 0 until renderer.pageCount) {
                     val page = renderer.openPage(i)
-                    val scale = dpi / 72f
+                    val scale = rasterScale(dpi, page.width, page.height)
                     val bw = (page.width * scale).toInt().coerceAtLeast(1)
                     val bh = (page.height * scale).toInt().coerceAtLeast(1)
 
@@ -159,7 +161,7 @@ class PdfOcrModule(private val reactContext: ReactApplicationContext) :
 
                 for (i in 0 until renderer.pageCount) {
                     val page = renderer.openPage(i)
-                    val scale = dpi / 72f
+                    val scale = rasterScale(dpi, page.width, page.height)
                     val bitmap = Bitmap.createBitmap(
                         (page.width * scale).toInt().coerceAtLeast(1),
                         (page.height * scale).toInt().coerceAtLeast(1),
@@ -190,6 +192,23 @@ class PdfOcrModule(private val reactContext: ReactApplicationContext) :
      * The visible layer is the image, so dropping stray glyphs from the hidden
      * layer costs nothing but a few unsearchable words.
      */
+    /**
+     * ML Kit stops getting more accurate well before a page fills 2500 px
+     * on its longest edge, and the bitmap costs four bytes a pixel, so a
+     * very long page is rastered below the requested dpi rather than
+     * allocating hundreds of megabytes for detail nothing reads.
+     *
+     * The caller maps ML Kit boxes back to PDF points with this same value,
+     * so the hidden text layer still lands where the words are.
+     */
+    private fun rasterScale(dpi: Int, pageWidthPt: Int, pageHeightPt: Int): Float {
+        val requested = dpi / 72f
+        val longest = maxOf(pageWidthPt, pageHeightPt).toFloat()
+        if (longest <= 0f) return requested
+        val capped = OCR_MAX_EDGE / longest
+        return if (requested > capped) capped else requested
+    }
+
     private fun sanitize(input: String): String =
         input.filter { it.code in 32..126 || it.code in 160..255 }
 }

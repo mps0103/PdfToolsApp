@@ -116,6 +116,14 @@ export default function PagesScreen({ route, navigation }: Props) {
         data={order}
         numColumns={3}
         keyExtractor={(p, i) => `${p}-${i}`}
+        // A page thumbnail is a decoded bitmap, not a row of text. The
+        // FlatList default keeps about ten screens of them alive, which on
+        // a long document is most of the heap; these bring it down to the
+        // rows around the viewport.
+        removeClippedSubviews
+        initialNumToRender={9}
+        maxToRenderPerBatch={6}
+        windowSize={3}
         columnWrapperStyle={{ gap: space.sm, paddingHorizontal: space.md }}
         contentContainerStyle={{ gap: space.sm, paddingVertical: space.md }}
         renderItem={({ item: original, index }) => {
