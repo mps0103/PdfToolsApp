@@ -10,7 +10,14 @@ import {
 } from 'react-native';
 import { CATEGORIES, TOOLS, Tool } from '../tools/registry';
 import ToolIcon from '../components/ToolIcon';
-import { colors, radius, space, type } from '../theme';
+import {
+  Palette,
+  Typography,
+  radius,
+  space,
+  useTheme,
+  useThemedStyles,
+} from '../theme';
 
 type Props = { navigation: any };
 
@@ -37,6 +44,8 @@ const columnsFor = (width: number) => {
 };
 
 export default function HomeScreen({ navigation }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [query, setQuery] = useState('');
   // useWindowDimensions, not Dimensions.get, so rotating the device relays
   // the grid instead of keeping the launch-time column count.
@@ -175,7 +184,8 @@ export default function HomeScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette, type: Typography) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   listContent: { paddingBottom: space.xl },
   header: {

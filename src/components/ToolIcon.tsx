@@ -1,6 +1,6 @@
 import React from 'react';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
-import { colors } from '../theme';
+import { useTheme } from '../theme';
 
 /**
  * One line drawing per tool, sized on a 24x24 grid. They sit faded in the
@@ -17,6 +17,21 @@ const page = (
     <Path d="M13 3v4h4" />
   </>
 );
+
+/**
+ * Two glyphs need a filled shape rather than a stroke, and fill does not
+ * inherit from the <G> the way stroke does. They read the palette here so
+ * the table below can stay a plain map of elements.
+ */
+const SolidHalf = () => {
+  const { colors } = useTheme();
+  return <Path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill={colors.textDim} stroke="none" />;
+};
+
+const SolidDot = () => {
+  const { colors } = useTheme();
+  return <Circle cx={12} cy={7.8} r={0.9} fill={colors.textDim} stroke="none" />;
+};
 
 const ICONS: Record<string, React.ReactNode> = {
   // Read
@@ -264,7 +279,7 @@ const ICONS: Record<string, React.ReactNode> = {
   grayscale: (
     <>
       <Circle cx={12} cy={12} r={8.5} />
-      <Path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill={colors.textDim} stroke="none" />
+      <SolidHalf />
     </>
   ),
 
@@ -273,7 +288,7 @@ const ICONS: Record<string, React.ReactNode> = {
     <>
       <Circle cx={12} cy={12} r={8.5} />
       <Path d="M12 11v5.5" />
-      <Circle cx={12} cy={7.8} r={0.9} fill={colors.textDim} stroke="none" />
+      <SolidDot />
     </>
   ),
 };
@@ -281,6 +296,7 @@ const ICONS: Record<string, React.ReactNode> = {
 type Props = { id: string; size?: number };
 
 export default function ToolIcon({ id, size = 22 }: Props) {
+  const { colors } = useTheme();
   // A tool without a drawing of its own still gets the page outline, so a
   // newly added tool looks unfinished rather than broken.
   const glyph = ICONS[id] ?? page;

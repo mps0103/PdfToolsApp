@@ -3,9 +3,17 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import RNFS from 'react-native-fs';
 import { OUT_DIR } from '../lib/fs';
 import { TestResult, runSelfTest } from '../lib/selftest';
-import { colors, radius, space, type } from '../theme';
+import {
+  Palette,
+  radius,
+  space,
+  useTheme,
+  useThemedStyles,
+} from '../theme';
 
 export default function DiagnosticsScreen() {
+  const { colors, type } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [results, setResults] = useState<TestResult[] | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
@@ -52,7 +60,7 @@ export default function DiagnosticsScreen() {
       </Text>
 
       <Pressable onPress={run} disabled={!!progress} style={[styles.cta, !!progress && styles.ctaOff]}>
-        <Text style={styles.ctaText}>
+        <Text style={[styles.ctaText, !!progress && styles.ctaOffText]}>
           {progress ? `Testing ${progress.done} of ${progress.total}…` : 'Run self test'}
         </Text>
       </Pressable>
@@ -74,7 +82,7 @@ export default function DiagnosticsScreen() {
         contentContainerStyle={{ padding: space.lg, gap: space.sm }}
         renderItem={({ item }) => (
           <View style={styles.row}>
-            <View style={[styles.dot, { backgroundColor: dotColor(item.outcome) }]} />
+            <View style={[styles.dot, { backgroundColor: dotColor(item.outcome, colors) }]} />
             <View style={{ flex: 1 }}>
               <Text style={type.body}>{item.title}</Text>
               {item.detail && (
@@ -91,10 +99,14 @@ export default function DiagnosticsScreen() {
   );
 }
 
-const dotColor = (outcome: TestResult['outcome']) =>
+// Pass and fail keep their own greens and reds in both themes — they mean
+// the same thing whatever the interface looks like. Only the neutral state
+// follows the palette.
+const dotColor = (outcome: TestResult['outcome'], colors: Palette) =>
   outcome === 'pass' ? '#4CC38A' : outcome === 'fail' ? '#E5484D' : colors.textDim;
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   cta: {
     margin: space.lg,
@@ -104,7 +116,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaOff: { backgroundColor: colors.surfaceAlt },
-  ctaText: { color: '#0B1020', fontSize: 16, fontWeight: '700' },
+  // The label moves with the background: on-accent is white in the light
+  // theme and would disappear against surfaceAlt.
+  ctaOffText: { color: colors.textDim },
+  ctaText: { color: colors.onAccent, fontSize: 16, fontWeight: '700' },
   summary: {
     flexDirection: 'row',
     alignItems: 'center',

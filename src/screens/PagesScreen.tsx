@@ -13,11 +13,19 @@ import { PdfRender, RENDER_ERRORS } from '../native/PdfRender';
 import { applyPageEdits } from '../workers/pdfLib';
 import ResultCard from '../components/ResultCard';
 import { PickedFile } from '../lib/files';
-import { colors, radius, space, type } from '../theme';
+import {
+  Palette,
+  radius,
+  space,
+  useTheme,
+  useThemedStyles,
+} from '../theme';
 
 type Props = { route: any; navigation: any };
 
 export default function PagesScreen({ route, navigation }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const file: PickedFile = route.params.file;
   // Each tool gets only its own action, so "Reorder pages" does not offer
   // rotation and "Rotate" does not offer deletion.
@@ -184,7 +192,9 @@ export default function PagesScreen({ route, navigation }: Props) {
         disabled={!dirty || busy}
         style={[styles.cta, (!dirty || busy) && styles.ctaOff]}
       >
-        <Text style={styles.ctaText}>{busy ? 'Saving…' : 'Save changes'}</Text>
+        <Text style={[styles.ctaText, (!dirty || busy) && styles.ctaOffText]}>
+          {busy ? 'Saving…' : 'Save changes'}
+        </Text>
       </Pressable>
 
       {result && (
@@ -217,17 +227,23 @@ const Action = ({
   onPress: () => void;
   disabled?: boolean;
   danger?: boolean;
-}) => (
-  <Pressable
-    onPress={onPress}
-    disabled={disabled}
-    style={[styles.action, disabled && { opacity: 0.35 }]}
-  >
-    <Text style={[type.body, danger && { color: colors.warn }]}>{label}</Text>
-  </Pressable>
-);
+}) => {
+  const { colors, type } = useTheme();
+  const styles = useThemedStyles(makeStyles);
 
-const styles = StyleSheet.create({
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={[styles.action, disabled && { opacity: 0.35 }]}
+    >
+      <Text style={[type.body, danger && { color: colors.warn }]}>{label}</Text>
+    </Pressable>
+  );
+};
+
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center', padding: space.xl },
   cell: {
@@ -256,5 +272,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaOff: { backgroundColor: colors.surfaceAlt },
-  ctaText: { color: '#0B1020', fontSize: 16, fontWeight: '700' },
+  // The label moves with the background: on-accent is white in the light
+  // theme and would disappear against surfaceAlt.
+  ctaOffText: { color: colors.textDim },
+  ctaText: { color: colors.onAccent, fontSize: 16, fontWeight: '700' },
 });

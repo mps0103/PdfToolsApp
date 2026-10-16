@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { PdfRender } from '../native/PdfRender';
 import { useInBackground } from '../lib/memory';
-import { colors, radius, type } from '../theme';
+import { Palette, radius, useTheme, useThemedStyles } from '../theme';
 
 type Props = { src: string; pageIndex: number; width?: number };
 
 export default function PageThumb({ src, pageIndex, width = 220 }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [uri, setUri] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   // The render is already a file in the cache, so dropping the Image while
@@ -52,7 +54,8 @@ export default function PageThumb({ src, pageIndex, width = 220 }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
   box: {
     width: '100%',
     aspectRatio: 0.707, // A4

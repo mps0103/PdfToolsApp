@@ -35,7 +35,13 @@ import {
 import ResultCard from '../components/ResultCard';
 import { PdfRender, RENDER_ERRORS } from '../native/PdfRender';
 import { PdfCompress, SIGNATURE_THRESHOLD_DEFAULT } from '../native/PdfCompress';
-import { colors, radius, space, type } from '../theme';
+import {
+  Palette,
+  radius,
+  space,
+  useTheme,
+  useThemedStyles,
+} from '../theme';
 
 type Mode = 'ink' | 'highlight' | 'text' | 'whiteout' | 'signature';
 type Props = { route: any; navigation: any };
@@ -52,6 +58,8 @@ const THRESHOLDS = [160, 180, 200, 220, 240];
 const fileUri = (p: string) => (p.startsWith('file://') ? p : `file://${p}`);
 
 export default function AnnotateScreen({ route, navigation }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const file: PickedFile = route.params.file;
   const signing: boolean = route.params.signing ?? false;
 
@@ -730,7 +738,14 @@ export default function AnnotateScreen({ route, navigation }: Props) {
           disabled={!annotations.length || busy}
           style={[styles.cta, (!annotations.length || busy) && styles.ctaOff]}
         >
-          <Text style={styles.ctaText}>{busy ? 'Saving…' : 'Save'}</Text>
+          <Text
+            style={[
+              styles.ctaText,
+              (!annotations.length || busy) && styles.ctaOffText,
+            ]}
+          >
+            {busy ? 'Saving…' : 'Save'}
+          </Text>
         </Pressable>
       </View>
 
@@ -917,7 +932,8 @@ const labelFor = (m: Mode) => {
   }
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center', padding: space.xl },
   canvasWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.md },
@@ -956,7 +972,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sigRotateGlyph: { color: '#0B1020', fontSize: 15, fontWeight: '700' },
+  sigRotateGlyph: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
   pager: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1013,10 +1029,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaOff: { backgroundColor: colors.surfaceAlt },
-  ctaText: { color: '#0B1020', fontSize: 16, fontWeight: '700' },
+  // The label moves with the background: on-accent is white in the light
+  // theme and would disappear against surfaceAlt.
+  ctaOffText: { color: colors.textDim },
+  ctaText: { color: colors.onAccent, fontSize: 16, fontWeight: '700' },
   modalWrap: {
     flex: 1,
-    backgroundColor: '#000000AA',
+    backgroundColor: colors.scrim,
     alignItems: 'center',
     justifyContent: 'center',
     padding: space.lg,

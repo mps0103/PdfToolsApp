@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { renameFile, shareFile } from '../lib/fs';
 import { PdfSave } from '../native/PdfSave';
-import { colors, radius, space, type } from '../theme';
+import {
+  Palette,
+  radius,
+  space,
+  useTheme,
+  useThemedStyles,
+} from '../theme';
 
 type Props = {
   path: string;
@@ -16,6 +22,8 @@ type Props = {
  * save behave the same way regardless of which screen produced the file.
  */
 export default function ResultCard({ path, note, navigation, onPathChange }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const share = (target: string) => {
     shareFile(target).catch(e =>
       Alert.alert('Could not share', e?.message ?? 'Something went wrong.'),
@@ -118,7 +126,8 @@ export default function ResultCard({ path, note, navigation, onPathChange }: Pro
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
   card: {
     margin: space.lg,
     marginTop: space.sm,
@@ -138,7 +147,7 @@ const styles = StyleSheet.create({
   },
   modalWrap: {
     flex: 1,
-    backgroundColor: '#000000AA',
+    backgroundColor: colors.scrim,
     alignItems: 'center',
     justifyContent: 'center',
     padding: space.lg,
@@ -164,5 +173,5 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
     alignItems: 'center',
   },
-  ctaText: { color: '#0B1020', fontSize: 15, fontWeight: '700' },
+  ctaText: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
 });

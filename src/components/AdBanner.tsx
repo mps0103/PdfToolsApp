@@ -7,7 +7,7 @@ import {
   BannerAdSize,
   TestIds,
 } from 'react-native-google-mobile-ads';
-import { colors, AD_SLOT_HEIGHT } from '../theme';
+import { AD_SLOT_HEIGHT, useTheme } from '../theme';
 
 // Swap in the real unit id at release. TestIds keeps debug builds
 // from serving live ads and getting the account flagged.
@@ -19,6 +19,7 @@ const UNIT_ID = __DEV__
     })!;
 
 export default function AdBanner() {
+  const { colors } = useTheme();
   const [failed, setFailed] = useState(false);
   const [personalised, setPersonalised] = useState(false);
   const [ready, setReady] = useState(false);

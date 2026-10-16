@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   NavigationContainer,
   DarkTheme,
+  DefaultTheme,
   createNavigationContainerRef,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -21,7 +22,7 @@ import AdBanner from './src/components/AdBanner';
 import Splash from './src/components/Splash';
 import { importIncoming, launchUri } from './src/lib/files';
 import { findTool } from './src/tools/registry';
-import { colors } from './src/theme';
+import { Palette, ThemeProvider, useTheme } from './src/theme';
 
 const Stack = createNativeStackNavigator();
 
@@ -32,19 +33,42 @@ const Stack = createNativeStackNavigator();
  */
 const navigationRef = createNavigationContainerRef();
 
-const navTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: colors.bg,
-    card: colors.bg,
-    text: colors.text,
-    border: colors.line,
-    primary: colors.accent,
-  },
+// React Navigation keeps its own palette for the header and the card it
+// draws behind each screen, so it has to be handed the same colours.
+const makeNavTheme = (colors: Palette, scheme: string) => {
+  const base = scheme === "light" ? DefaultTheme : DarkTheme;
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      background: colors.bg,
+      card: colors.bg,
+      text: colors.text,
+      border: colors.line,
+      primary: colors.accent,
+    },
+  };
 };
 
+/**
+ * The provider has to sit above everything that reads the theme, which is
+ * every screen plus the banner, so App does nothing but mount it.
+ */
 export default function App() {
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
+  );
+}
+
+function AppShell() {
+  const { colors, scheme } = useTheme();
+  const navTheme = React.useMemo(
+    () => makeNavTheme(colors, scheme),
+    [colors, scheme],
+  );
+
   useEffect(() => {
     mobileAds().initialize();
   }, []);
@@ -90,7 +114,7 @@ export default function App() {
   // flicker at the handover.
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={scheme === 'light' ? 'dark-content' : 'light-content'} />
       <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
         <NavigationContainer ref={navigationRef} theme={navTheme}>
           <Stack.Navigator

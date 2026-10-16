@@ -17,7 +17,13 @@ import RNFS from 'react-native-fs';
 import { OUT_DIR, ensureOutDir, renameFile, shareFile } from '../lib/fs';
 import { formatSize } from '../lib/files';
 import { PdfSave } from '../native/PdfSave';
-import { colors, radius, space, type } from '../theme';
+import {
+  Palette,
+  radius,
+  space,
+  useTheme,
+  useThemedStyles,
+} from '../theme';
 
 type Entry = { name: string; path: string; size: number; when: number; isDir: boolean };
 
@@ -26,6 +32,8 @@ const isPdf = (name: string) => name.toLowerCase().endsWith('.pdf');
 const fileUri = (p: string) => (p.startsWith('file://') ? p : `file://${p}`);
 
 export default function FilesScreen({ navigation, route }: any) {
+  const { colors, type } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
   const [renaming, setRenaming] = useState<Entry | null>(null);
@@ -356,7 +364,8 @@ export default function FilesScreen({ navigation, route }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center', padding: space.xl },
   folderBar: {
@@ -397,7 +406,7 @@ const styles = StyleSheet.create({
   viewerImage: { width: '100%', height: '80%' },
   modalWrap: {
     flex: 1,
-    backgroundColor: '#000000AA',
+    backgroundColor: colors.scrim,
     alignItems: 'center',
     justifyContent: 'center',
     padding: space.lg,
@@ -423,5 +432,5 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
     alignItems: 'center',
   },
-  ctaText: { color: '#0B1020', fontSize: 15, fontWeight: '700' },
+  ctaText: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
 });

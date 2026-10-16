@@ -31,12 +31,20 @@ import {
 import { CRYPTO_ERRORS, PdfCrypto } from '../native/PdfCrypto';
 import { COMPRESSION_LEVELS, CompressionLevel } from '../native/PdfCompress';
 import { PAGE_SIZES, PageSizeKey } from '../workers/pdfLibExtra';
-import { colors, radius, space, type } from '../theme';
+import {
+  Palette,
+  radius,
+  space,
+  useTheme,
+  useThemedStyles,
+} from '../theme';
 import { useFocusEffect } from '@react-navigation/native';
 
 type Props = { route: any; navigation: any };
 
 export default function ToolScreen({ route, navigation }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const share = (target: string) => {
     shareFile(target).catch(e =>
       Alert.alert('Could not share', e?.message ?? 'Something went wrong.'),
@@ -652,7 +660,14 @@ export default function ToolScreen({ route, navigation }: Props) {
             ]}
           />
         )}
-        <Text style={styles.ctaText}>{busy ? 'Working…' : tool.title}</Text>
+        <Text
+          style={[
+            styles.ctaText,
+            (files.length === 0 || busy) && styles.ctaOffText,
+          ]}
+        >
+          {busy ? 'Working…' : tool.title}
+        </Text>
       </Pressable>
 
       {result && (
@@ -762,12 +777,16 @@ function messageFor(e: any) {
   }
 }
 
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <View style={{ marginTop: space.lg }}>
-    <Text style={[type.section, { marginBottom: space.sm }]}>{label.toUpperCase()}</Text>
-    {children}
-  </View>
-);
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => {
+  const { type } = useTheme();
+
+  return (
+    <View style={{ marginTop: space.lg }}>
+      <Text style={[type.section, { marginBottom: space.sm }]}>{label.toUpperCase()}</Text>
+      {children}
+    </View>
+  );
+};
 
 const Toggle = ({
   label,
@@ -777,19 +796,25 @@ const Toggle = ({
   label: string;
   value: boolean;
   onChange: (v: boolean) => void;
-}) => (
-  <View style={[styles.row, { marginTop: space.md }]}>
-    <Text style={[type.body, { flex: 1 }]}>{label}</Text>
-    <Switch
-      value={value}
-      onValueChange={onChange}
-      trackColor={{ true: colors.accentSoft, false: colors.line }}
-      thumbColor={value ? colors.accent : colors.textDim}
-    />
-  </View>
-);
+}) => {
+  const { colors, type } = useTheme();
+  const styles = useThemedStyles(makeStyles);
 
-const styles = StyleSheet.create({
+  return (
+    <View style={[styles.row, { marginTop: space.md }]}>
+      <Text style={[type.body, { flex: 1 }]}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        trackColor={{ true: colors.accentSoft, false: colors.line }}
+        thumbColor={value ? colors.accent : colors.textDim}
+      />
+    </View>
+  );
+};
+
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   notice: {
     marginTop: space.md,
@@ -844,7 +869,10 @@ const styles = StyleSheet.create({
     marginTop: space.xl,
   },
   ctaOff: { backgroundColor: colors.surfaceAlt },
-  ctaText: { color: '#0B1020', fontSize: 16, fontWeight: '700' },
+  // The label moves with the background: on-accent is white in the light
+  // theme and would disappear against surfaceAlt.
+  ctaOffText: { color: colors.textDim },
+  ctaText: { color: colors.onAccent, fontSize: 16, fontWeight: '700' },
   ctaClip: {
     overflow: 'hidden',
   },
@@ -865,7 +893,7 @@ const styles = StyleSheet.create({
   },
   modalWrap: {
     flex: 1,
-    backgroundColor: '#000000AA',
+    backgroundColor: colors.scrim,
     alignItems: 'center',
     justifyContent: 'center',
     padding: space.lg,

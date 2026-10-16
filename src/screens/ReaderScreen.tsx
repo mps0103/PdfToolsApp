@@ -13,11 +13,19 @@ import {
 import Pdf from 'react-native-pdf';
 import { PickedFile } from '../lib/files';
 import { shareFile } from '../lib/fs';
-import { colors, radius, space, type } from '../theme';
+import {
+  Palette,
+  radius,
+  space,
+  useTheme,
+  useThemedStyles,
+} from '../theme';
 
 type Props = { route: any; navigation: any };
 
 export default function ReaderScreen({ route, navigation }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const share = (target: string) => {
     shareFile(target).catch(e =>
       Alert.alert('Could not share', e?.message ?? 'Something went wrong.'),
@@ -199,7 +207,8 @@ const invertLayer: any = {
   mixBlendMode: 'difference',
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: Palette) =>
+  StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   fill: { flex: 1, width: Dimensions.get('window').width },
   center: { alignItems: 'center', justifyContent: 'center', gap: space.md },
@@ -225,10 +234,10 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
     alignItems: 'center',
   },
-  ctaText: { color: '#0B1020', fontSize: 15, fontWeight: '700' },
+  ctaText: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
   modalWrap: {
     flex: 1,
-    backgroundColor: '#000000AA',
+    backgroundColor: colors.scrim,
     alignItems: 'center',
     justifyContent: 'center',
     padding: space.lg,
